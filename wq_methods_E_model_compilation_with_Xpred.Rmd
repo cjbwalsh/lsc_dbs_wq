@@ -1,0 +1,1011 @@
+---
+title: "Dispersed urban-stormwater control improved stream water quality in a catchment-scale experiment"
+subtitle: "Supplementary methods E: model compilation with predictions to new data"
+author:
+  - Christopher J Walsh, Sam J Imberger, Matthew J Burns, Darren G Bos, and Tim D Fletcher
+date: "School of Ecosystem and Forest Sciences, The University of Melbourne, 500 Yarra Boulevard, Burnley, 3121 Victoria, Australia"
+output:   
+  word_document:
+    reference_docx: officedown_template.docx
+csl: ecol-app.csl
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, 
+                      message = FALSE, error = FALSE)
+library(rstan); library(loo)
+rstan_options(auto_write = TRUE)
+# Set a directory for storing the (large) model objects: 
+# I used a directory on a network drive
+# (the directory needs three sub-directories: data, model_fits and compiled_models)
+mod_dir <- "[Network Drive]/git-data/lsc_dbs_wq/" #
+```
+
+This document compiles and saves the Stan model objects described in `wq_manuscript.Rmd`, sampled in
+`wq_model_sampling.Rmd` to model the water quality data compiled in `wq_data_compilation.Rmd`. The models are the same as those compiled in `wq_model_compilation.Rmd`, except they include prediction to a new dataset in the generated quantities section, for production of counterfactual plots of model predictions.
+
+```{stan output.var="m_1_st_p"}
+data{
+    int<lower=1> N;
+    int<lower=1> N_site_no;
+    real y[N];
+    int site_no[N];
+    real degrd[N];
+    real restr[N];
+    real rain1[N];
+    real t[N];
+    real auto_t[N]; // the temporal autocorrelation term
+    real auto_s[N]; // the spatial autocorrelation term
+    int n_st_miss;  // the number of data points missing both auto_s and auto_t
+    int n_s_miss;   // the number of data points missing auto_s (but not auto_t)
+    int n_t_miss;   // the number of data points missing auto_t (but not auto_s)
+    int n_no_miss;  // the number of data points with both auto_t and auto_s values
+    int st_miss[n_st_miss]; // indices of data points missing both auto_s and auto_t
+    int s_miss[n_s_miss];   // indices of data points missing auto_s (but not auto_t)
+    int t_miss[n_t_miss];   // indices of data points missing auto_t (but not auto_s)
+    int no_miss[n_no_miss]; // indices of data points with both auto_t and auto_s values
+    int<lower=1> N2;
+    real degrd_p [N2];
+    real restr_p [N2];
+    real rain1_p [N2];
+    real t_p [N2];
+}
+parameters{
+    real a;
+    real b_d;
+    real b_r;
+    real b_p;
+    real b_dp;
+    real b_rp;
+    real b_auto_s;
+    real b_auto_t;
+    vector[N_site_no] a_s;
+    real<lower=0> a_s_sigma;
+    vector[N_site_no] b_t;
+    real t_mu;
+    real<lower=0> t_sigma;
+    real<lower=0> sigma;
+    }
+model{
+    vector[N] mu;
+    sigma ~ cauchy( 0 , 2 );
+    t_mu ~ normal( 0, 5 );
+    t_sigma ~ cauchy( 0 , 2 );
+    b_t ~ normal( t_mu , t_sigma );
+    a_s ~ normal( 0 , a_s_sigma );
+    b_r ~ normal( 0 , 5 );
+    b_d ~ normal( 0 , 5 );
+    b_p ~ normal( 0 , 5 );
+    b_dp ~ normal( 0 , 5 );
+    b_rp ~ normal( 0 , 5 );
+    b_auto_s ~ normal( 0 , 5 );
+    b_auto_t ~ normal( 0 , 5 );
+    a ~ normal( 0 , 10 );
+    for ( i in st_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i];
+    }
+    for ( i in s_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i] + 
+                b_auto_t * auto_t[i];
+    }
+    for ( i in t_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i] + 
+                b_auto_s * auto_s[i];
+    }
+    for ( i in no_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i] + 
+                b_auto_t * auto_t[i]  + b_auto_s * auto_s[i];
+    }
+    y ~ normal( mu , sigma );
+}
+generated quantities{
+    vector[N] mu;
+    vector[N] log_lik;
+    vector[N2] y_pred;
+    for ( i in st_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i];
+    }
+    for ( i in s_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i] + 
+                b_auto_t * auto_t[i];
+    }
+    for ( i in t_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i] + 
+                b_auto_s * auto_s[i];
+    }
+    for ( i in no_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i] + 
+                b_auto_t * auto_t[i]  + b_auto_s * auto_s[i];
+    }
+    for ( i in 1:N ) log_lik[i] = normal_lpdf( y[i] | mu[i] , sigma );
+    for ( i in 1:N2 ) {
+        y_pred[i] = a + b_d * degrd_p[i] + b_r * restr_p[i] + 
+                b_p * rain1_p[i] + b_dp * degrd_p[i] * rain1_p[i]  + 
+                b_rp * restr_p[i] * rain1_p[i] + t_mu * t_p[i]; 
+    }
+}
+
+```
+
+```{r}
+save(m_1_st_p, file = paste0(mod_dir, "compiled_models/wq_stan_m_1_st_p.rda"))
+```
+
+```{stan output.var="m_1_x_st_p"}
+data{
+    int<lower=1> N;
+    int<lower=1> N_site_no;
+    real y[N];
+    int site_no[N];
+    real degrd[N];
+    real restr[N];
+    real rain1[N];
+    real add1[N];
+    real t[N];
+    real auto_t[N]; // the temporal autocorrelation term
+    real auto_s[N]; // the spatial autocorrelation term
+    int n_st_miss;  // the number of data points missing both auto_s and auto_t
+    int n_s_miss;   // the number of data points missing auto_s (but not auto_t)
+    int n_t_miss;   // the number of data points missing auto_t (but not auto_s)
+    int n_no_miss;  // the number of data points with both auto_t and auto_s values
+    int st_miss[n_st_miss]; // indices of data points missing both auto_s and auto_t
+    int s_miss[n_s_miss];   // indices of data points missing auto_s (but not auto_t)
+    int t_miss[n_t_miss];   // indices of data points missing auto_t (but not auto_s)
+    int no_miss[n_no_miss]; // indices of data points with both auto_t and auto_s values
+    int<lower=1> N2;
+    real degrd_p [N2];
+    real restr_p [N2];
+    real rain1_p [N2];
+    real add1_p [N2];
+    real t_p [N2];
+}
+parameters{
+    real a;
+    real b_d;
+    real b_r;
+    real b_p;
+    real b_dp;
+    real b_rp;
+    real b_add1;
+    real b_auto_s;
+    real b_auto_t;
+    vector[N_site_no] a_s;
+    real<lower=0> a_s_sigma;
+    vector[N_site_no] b_t;
+    real t_mu;
+    real<lower=0> t_sigma;
+    real<lower=0> sigma;
+    }
+model{
+    vector[N] mu;
+    sigma ~ cauchy( 0 , 2 );
+    t_mu ~ normal( 0 , 5 );
+    t_sigma ~ cauchy( 0 , 2 );
+    b_t ~ normal( t_mu , t_sigma );
+    a_s_sigma ~ cauchy( 0 , 2 );
+    a_s ~ normal( 0 , a_s_sigma );
+    b_r ~ normal( 0 , 5 );
+    b_d ~ normal( 0 , 5 );
+    b_p ~ normal( 0 , 5 );
+    b_dp ~ normal( 0 , 5 );
+    b_rp ~ normal( 0 , 5 );
+    b_add1 ~ normal( 0 , 5 );
+    b_auto_s ~ normal( 0 , 5 );
+    b_auto_t ~ normal( 0 , 5 );
+    a ~ normal( 0 , 10 );
+    for ( i in st_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i];
+    }
+    for ( i in s_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i] + 
+                b_auto_t * auto_t[i];
+    }
+    for ( i in t_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i] + 
+                b_auto_s * auto_s[i];
+    }
+    for ( i in no_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i] + 
+                b_auto_t * auto_t[i]  + b_auto_s * auto_s[i];
+    }
+    y ~ normal( mu , sigma );
+}
+generated quantities{
+    vector[N] mu;
+    vector[N] log_lik;
+    vector[N2] y_pred;
+    for ( i in st_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i];
+    }
+    for ( i in s_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i] + 
+                b_auto_t * auto_t[i];
+    }
+    for ( i in t_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i] + 
+                b_auto_s * auto_s[i];
+    }
+    for ( i in no_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i] + 
+                b_auto_t * auto_t[i]  + b_auto_s * auto_s[i];
+    }
+    for ( i in 1:N ) log_lik[i] = normal_lpdf( y[i] | mu[i] , sigma );
+    for ( i in 1:N2 ) {
+        y_pred[i] = a + b_d * degrd_p[i] + b_r * restr_p[i] + 
+                b_add1 * add1_p[i] + 
+                b_p * rain1_p[i] + b_dp * degrd_p[i] * rain1_p[i]  + 
+                b_rp * restr_p[i] * rain1_p[i] + t_mu * t_p[i]; 
+    }
+}
+```
+
+```{r}
+save(m_1_x_st_p, file = paste0(mod_dir, "compiled_models/wq_stan_m_1_x_st_p.rda"))
+```
+
+```{stan output.var="m_1_xx_st_p"}
+data{
+    int<lower=1> N;
+    int<lower=1> N_site_no;
+    real y[N];
+    int site_no[N];
+    real degrd[N];
+    real restr[N];
+    real rain1[N];
+    real add1[N];
+    real add2[N];
+    real t[N];
+    real auto_t[N]; // the temporal autocorrelation term
+    real auto_s[N]; // the spatial autocorrelation term
+    int n_st_miss;  // the number of data points missing both auto_s and auto_t
+    int n_s_miss;   // the number of data points missing auto_s (but not auto_t)
+    int n_t_miss;   // the number of data points missing auto_t (but not auto_s)
+    int n_no_miss;  // the number of data points with both auto_t and auto_s values
+    int st_miss[n_st_miss]; // indices of data points missing both auto_s and auto_t
+    int s_miss[n_s_miss];   // indices of data points missing auto_s (but not auto_t)
+    int t_miss[n_t_miss];   // indices of data points missing auto_t (but not auto_s)
+    int no_miss[n_no_miss]; // indices of data points with both auto_t and auto_s values
+    int<lower=1> N2;
+    real degrd_p [N2];
+    real restr_p [N2];
+    real rain1_p [N2];
+    real add1_p [N2];
+    real add2_p [N2];
+    real t_p [N2];
+}
+parameters{
+    real a;
+    real b_d;
+    real b_r;
+    real b_p;
+    real b_dp;
+    real b_rp;
+    real b_add1;
+    real b_add2;
+    real b_auto_s;
+    real b_auto_t;
+    vector[N_site_no] a_s;
+    real<lower=0> a_s_sigma;
+    vector[N_site_no] b_t;
+    real t_mu;
+    real<lower=0> t_sigma;
+    real<lower=0> sigma;
+    }
+model{
+    vector[N] mu;
+    sigma ~ cauchy( 0 , 2 );
+    t_mu ~ normal( 0 , 5 );
+    t_sigma ~ cauchy( 0 , 2 );
+    b_t ~ normal( t_mu , t_sigma );
+    a_s_sigma ~ cauchy( 0 , 2 );
+    a_s ~ normal( 0 , a_s_sigma );
+    b_r ~ normal( 0 , 5 );
+    b_d ~ normal( 0 , 5 );
+    b_p ~ normal( 0 , 5 );
+    b_dp ~ normal( 0 , 5 );
+    b_rp ~ normal( 0 , 5 );
+    b_add1 ~ normal( 0 , 5 );
+    b_add2 ~ normal( 0 , 5 );
+    b_auto_s ~ normal( 0 , 5 );
+    b_auto_t ~ normal( 0 , 5 );
+    a ~ normal( 0 , 10 );
+    for ( i in st_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i];
+    }
+    for ( i in s_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i] + 
+                b_auto_t * auto_t[i];
+    }
+    for ( i in t_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i] + 
+                b_auto_s * auto_s[i];
+    }
+    for ( i in no_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i] + 
+                b_auto_t * auto_t[i]  + b_auto_s * auto_s[i];
+    }
+    y ~ normal( mu , sigma );
+}
+generated quantities{
+    vector[N] mu;
+    vector[N] log_lik;
+    vector[N2] y_pred;
+    for ( i in st_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i];
+    }
+    for ( i in s_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i] + 
+                b_auto_t * auto_t[i];
+    }
+    for ( i in t_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i] + 
+                b_auto_s * auto_s[i];
+    }
+    for ( i in no_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + 
+                b_rp * restr[i] * rain1[i] + b_t[site_no[i]] * t[i] + 
+                b_auto_t * auto_t[i]  + b_auto_s * auto_s[i];
+    }
+    for ( i in 1:N ) log_lik[i] = normal_lpdf( y[i] | mu[i] , sigma );
+    for ( i in 1:N2 ) {
+        y_pred[i] = a + b_d * degrd_p[i] + b_r * restr_p[i] + 
+                b_add1 * add1_p[i] + b_add2 * add2_p[i] + 
+                b_p * rain1_p[i] + b_dp * degrd_p[i] * rain1_p[i]  + 
+                b_rp * restr_p[i] * rain1_p[i] + t_mu * t_p[i]; 
+    }
+}
+```
+
+```{r}
+save(m_1_xx_st_p, file = paste0(mod_dir, "compiled_models/wq_stan_m_1_xx_st_p.rda"))
+```
+
+```{stan output.var="m_1ft_xx_st_p"}
+data{
+    int<lower=1> N;
+    int<lower=1> N_site_no;
+    real y[N];
+    int site_no[N];
+    real degrd[N];
+    real restr[N];
+    real rain1[N];
+    real add1[N];
+    real add2[N];
+    real t[N];
+    real auto_t[N]; // the temporal autocorrelation term
+    real auto_s[N]; // the spatial autocorrelation term
+    int n_st_miss;  // the number of data points missing both auto_s and auto_t
+    int n_s_miss;   // the number of data points missing auto_s (but not auto_t)
+    int n_t_miss;   // the number of data points missing auto_t (but not auto_s)
+    int n_no_miss;  // the number of data points with both auto_t and auto_s values
+    int st_miss[n_st_miss]; // indices of data points missing both auto_s and auto_t
+    int s_miss[n_s_miss];   // indices of data points missing auto_s (but not auto_t)
+    int t_miss[n_t_miss];   // indices of data points missing auto_t (but not auto_s)
+    int no_miss[n_no_miss]; // indices of data points with both auto_t and auto_s values
+    int<lower=1> N2;
+    real degrd_p [N2];
+    real restr_p [N2];
+    real rain1_p [N2];
+    real add1_p [N2];
+    real add2_p [N2];
+    real t_p [N2];
+}
+parameters{
+    real a;
+    real b_d;
+    real b_r;
+    real b_p;
+    real b_dp;
+    real b_rp;
+    real b_add1;
+    real b_add2;
+    real b_auto_s;
+    real b_auto_t;
+    vector[N_site_no] a_s;
+    real<lower=0> a_s_sigma;
+    real b_t;
+    real<lower=0> sigma;
+    }
+model{
+    vector[N] mu;
+    sigma ~ cauchy( 0 , 2 );
+    b_t ~ normal( 0, 5 );
+    a_s_sigma ~ cauchy( 0 , 2 );
+    a_s ~ normal( 0 , a_s_sigma );
+    b_r ~ normal( 0 , 5 );
+    b_d ~ normal( 0 , 5 );
+    b_p ~ normal( 0 , 5 );
+    b_dp ~ normal( 0 , 5 );
+    b_rp ~ normal( 0 , 5 );
+    b_add1 ~ normal( 0 , 5 );
+    b_add2 ~ normal( 0 , 5 );
+    b_auto_s ~ normal( 0 , 5 );
+    b_auto_t ~ normal( 0 , 5 );
+    a ~ normal( 0 , 10 );
+    for ( i in st_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i];
+    }
+    for ( i in s_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_t * auto_t[i];
+    }
+    for ( i in t_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_s * auto_s[i];
+    }
+    for ( i in no_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_t * auto_t[i]  + b_auto_s * auto_s[i];
+    }
+    y ~ normal( mu , sigma );
+}
+generated quantities{
+    vector[N] mu;
+    vector[N] log_lik;
+    vector[N2] y_pred;
+    for ( i in st_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i];
+    }
+    for ( i in s_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_t * auto_t[i];
+    }
+    for ( i in t_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_s * auto_s[i];
+    }
+    for ( i in no_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_t * auto_t[i]  + b_auto_s * auto_s[i];
+    }
+    for ( i in 1:N ) log_lik[i] = normal_lpdf( y[i] | mu[i] , sigma );
+    for ( i in 1:N2 ) {
+        y_pred[i] = a + b_d * degrd_p[i] + b_r * restr_p[i] + 
+                b_add1 * add1_p[i] + b_add2 * add2_p[i] + 
+                b_p * rain1_p[i] + b_dp * degrd_p[i] * rain1_p[i]  + 
+                b_rp * restr_p[i] * rain1_p[i] + b_t * t_p[i]; 
+    }
+}
+```
+
+```{r}
+save(m_1ft_xx_st_p, file = paste0(mod_dir, "compiled_models/wq_stan_m_1ft_xx_st_p.rda"))
+```
+
+```{stan output.var="m_1ft_xxx_st_p"}
+data{
+    int<lower=1> N;
+    int<lower=1> N_site_no;
+    real y[N];
+    int site_no[N];
+    real degrd[N];
+    real restr[N];
+    real rain1[N];
+    real add1[N];
+    real add2[N];
+    real add3[N];
+    real t[N];
+    real auto_t[N]; // the temporal autocorrelation term
+    real auto_s[N]; // the spatial autocorrelation term
+    int n_st_miss;  // the number of data points missing both auto_s and auto_t
+    int n_s_miss;   // the number of data points missing auto_s (but not auto_t)
+    int n_t_miss;   // the number of data points missing auto_t (but not auto_s)
+    int n_no_miss;  // the number of data points with both auto_t and auto_s values
+    int st_miss[n_st_miss]; // indices of data points missing both auto_s and auto_t
+    int s_miss[n_s_miss];   // indices of data points missing auto_s (but not auto_t)
+    int t_miss[n_t_miss];   // indices of data points missing auto_t (but not auto_s)
+    int no_miss[n_no_miss]; // indices of data points with both auto_t and auto_s values
+    int<lower=1> N2;
+    real degrd_p [N2];
+    real restr_p [N2];
+    real rain1_p [N2];
+    real add1_p [N2];
+    real add2_p [N2];
+    real add3_p [N2];
+    real t_p [N2];
+}
+parameters{
+    real a;
+    real b_d;
+    real b_r;
+    real b_p;
+    real b_dp;
+    real b_rp;
+    real b_add1;
+    real b_add2;
+    real b_add3;
+    real b_auto_s;
+    real b_auto_t;
+    vector[N_site_no] a_s;
+    real<lower=0> a_s_sigma;
+    real b_t;
+    real<lower=0> sigma;
+    }
+model{
+    vector[N] mu;
+    sigma ~ cauchy( 0 , 2 );
+    b_t ~ normal( 0 , 5 );
+    a_s_sigma ~ cauchy( 0 , 2 );
+    a_s ~ normal( 0 , a_s_sigma );
+    b_r ~ normal( 0 , 5 );
+    b_d ~ normal( 0 , 5 );
+    b_p ~ normal( 0 , 5 );
+    b_dp ~ normal( 0 , 5 );
+    b_rp ~ normal( 0 , 5 );
+    b_add1 ~ normal( 0 , 5 );
+    b_add2 ~ normal( 0 , 5 );
+    b_add3 ~ normal( 0 , 5 );
+    b_auto_s ~ normal( 0 , 5 );
+    b_auto_t ~ normal( 0 , 5 );
+    a ~ normal( 0 , 10 );
+    for ( i in st_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + b_add3 * add3[i] +
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i];
+    }
+    for ( i in s_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + b_add3 * add3[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_t * auto_t[i];
+    }
+    for ( i in t_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + b_add3 * add3[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_s * auto_s[i];
+    }
+    for ( i in no_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + b_add3 * add3[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_t * auto_t[i]  + b_auto_s * auto_s[i];
+    }
+    y ~ normal( mu , sigma );
+}
+generated quantities{
+    vector[N] mu;
+    vector[N] log_lik;
+    vector[N2] y_pred;
+    for ( i in st_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + b_add3 * add3[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i];
+    }
+    for ( i in s_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + b_add3 * add3[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_t * auto_t[i];
+    }
+    for ( i in t_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + b_add3 * add3[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_s * auto_s[i];
+    }
+    for ( i in no_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + b_add3 * add3[i] +
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_t * auto_t[i]  + b_auto_s * auto_s[i];
+    }
+    for ( i in 1:N ) log_lik[i] = normal_lpdf( y[i] | mu[i] , sigma );
+    for ( i in 1:N2 ) {
+        y_pred[i] = a + b_d * degrd_p[i] + b_r * restr_p[i] + 
+                b_add1 * add1_p[i] + b_add2 * add2_p[i] + b_add3 * add3_p[i] + 
+                b_p * rain1_p[i] + b_dp * degrd_p[i] * rain1_p[i]  + 
+                b_rp * restr_p[i] * rain1_p[i] + b_t * t_p[i]; 
+    }
+}
+```
+
+```{r}
+save(m_1ft_xxx_st_p, file = paste0(mod_dir, "compiled_models/wq_stan_m_1ft_xxx_st_p.rda"))
+```
+
+
+```{stan output.var="m_3ft_sdr_int_st_p"}
+data{
+    int<lower=1> N;
+    int<lower=1> N_site_no;
+    real y[N];
+    int site_no[N];
+    real degrd[N];
+    real restr[N];
+    real rain1[N];
+    real season[N];
+    real diel[N];
+    real rain365[N];
+    real t[N];
+    real auto_t[N]; // the temporal autocorrelation term
+    real auto_s[N]; // the spatial autocorrelation term
+    int n_st_miss;  // the number of data points missing both auto_s and auto_t
+    int n_s_miss;   // the number of data points missing auto_s (but not auto_t)
+    int n_t_miss;   // the number of data points missing auto_t (but not auto_s)
+    int n_no_miss;  // the number of data points with both auto_t and auto_s values
+    int st_miss[n_st_miss]; // indices of data points missing both auto_s and auto_t
+    int s_miss[n_s_miss];   // indices of data points missing auto_s (but not auto_t)
+    int t_miss[n_t_miss];   // indices of data points missing auto_t (but not auto_s)
+    int no_miss[n_no_miss]; // indices of data points with both auto_t and auto_s values
+    int<lower=1> N2;
+    real degrd_p[N2];
+    real restr_p[N2];
+    real rain1_p[N2];
+    real season_p[N2];
+    real diel_p[N2];
+    real rain365_p[N2];
+    real t_p[N2];
+}
+parameters{
+    real a;
+    real b_d;
+    real b_r;
+    real b_p;
+    real b_dp;
+    real b_rp;
+    real b_seas;
+    real b_diel;
+    real b_seas_r;
+    real b_seas_d;
+    real b_diel_r;
+    real b_diel_d;
+    real b_auto_s;
+    real b_auto_t;
+    real b_rain365;
+    vector[N_site_no] a_s;
+    real<lower=0> a_s_sigma;
+    real b_t;
+    real<lower=0> sigma;
+    }
+model{
+    vector[N] mu;
+    sigma ~ cauchy( 0 , 2 );
+    b_t ~ normal( 0 , 5 );
+    a_s_sigma ~ cauchy( 0 , 2 );
+    a_s ~ normal( 0 , a_s_sigma );
+    b_r ~ normal( 0 , 5 );
+    b_d ~ normal( 0 , 5 );
+    b_p ~ normal( 0 , 5 );
+    b_dp ~ normal( 0 , 5 );
+    b_rp ~ normal( 0 , 5 );
+    b_seas ~ normal( 0 , 5 );
+    b_diel ~ normal( 0 , 5 );
+    b_rain365 ~ normal( 0, 5 );
+    b_seas_r ~ normal( 0 , 5 );
+    b_seas_d ~ normal( 0 , 5 );
+    b_diel_r ~ normal( 0 , 5 );
+    b_diel_d ~ normal( 0 , 5 );
+    b_auto_s ~ normal( 0 , 5 );
+    b_auto_t ~ normal( 0 , 5 );
+    a ~ normal( 0 , 10 );
+    for ( i in st_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + b_rain365 * rain365[i] + 
+                b_seas * season[i] + b_diel * diel[i] + b_seas_r * season[i] * restr[i] + 
+                b_seas_d * season[i] * degrd[i] +  b_diel_r * diel[i] * restr[i] + 
+                b_diel_d * diel[i] * degrd[i] + b_p * rain1[i] + b_dp * degrd[i] * rain1[i] +
+                b_rp * restr[i] * rain1[i] + b_t * t[i];
+    }
+    for ( i in s_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + b_rain365 * rain365[i] + 
+                b_seas * season[i] + b_diel * diel[i] + b_seas_r * season[i] * restr[i] + 
+                b_seas_d * season[i] * degrd[i] +  b_diel_r * diel[i] * restr[i] + 
+                b_diel_d * diel[i] * degrd[i] + b_p * rain1[i] + b_dp * degrd[i] * rain1[i] +
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_t * auto_t[i];
+    }
+    for ( i in t_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + b_rain365 * rain365[i] + 
+                b_seas * season[i] + b_diel * diel[i] + b_seas_r * season[i] * restr[i] + 
+                b_seas_d * season[i] * degrd[i] +  b_diel_r * diel[i] * restr[i] + 
+                b_diel_d * diel[i] * degrd[i] + b_p * rain1[i] + b_dp * degrd[i] * rain1[i] +
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_s * auto_s[i];
+    }
+    for ( i in no_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + b_rain365 * rain365[i] + 
+                b_seas * season[i] + b_diel * diel[i] + b_seas_r * season[i] * restr[i] + 
+                b_seas_d * season[i] * degrd[i] +  b_diel_r * diel[i] * restr[i] + 
+                b_diel_d * diel[i] * degrd[i] + b_p * rain1[i] + b_dp * degrd[i] * rain1[i] +
+                b_rp * restr[i] * rain1[i] + b_t * t[i]  + 
+                b_auto_t * auto_t[i]  + b_auto_s * auto_s[i];
+    }
+    y ~ normal( mu , sigma );
+}
+generated quantities{
+    vector[N] mu;
+    vector[N] log_lik;
+    vector[N2] y_pred;
+    for ( i in st_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + b_rain365 * rain365[i] + 
+                b_seas * season[i] + b_diel * diel[i] + b_seas_r * season[i] * restr[i] + 
+                b_seas_d * season[i] * degrd[i] +  b_diel_r * diel[i] * restr[i] + 
+                b_diel_d * diel[i] * degrd[i] + b_p * rain1[i] + b_dp * degrd[i] * rain1[i] +
+                b_rp * restr[i] * rain1[i] + b_t * t[i];
+    }
+    for ( i in s_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + b_rain365 * rain365[i] + 
+                b_seas * season[i] + b_diel * diel[i] + b_seas_r * season[i] * restr[i] + 
+                b_seas_d * season[i] * degrd[i] +  b_diel_r * diel[i] * restr[i] + 
+                b_diel_d * diel[i] * degrd[i] + b_p * rain1[i] + b_dp * degrd[i] * rain1[i] +
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_t * auto_t[i];
+    }
+    for ( i in t_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + b_rain365 * rain365[i] + 
+                b_seas * season[i] + b_diel * diel[i] + b_seas_r * season[i] * restr[i] + 
+                b_seas_d * season[i] * degrd[i] +  b_diel_r * diel[i] * restr[i] + 
+                b_diel_d * diel[i] * degrd[i] + b_p * rain1[i] + b_dp * degrd[i] * rain1[i] +
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_s * auto_s[i];
+    }
+    for ( i in no_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + b_rain365 * rain365[i] + 
+                b_seas * season[i] + b_diel * diel[i] + b_seas_r * season[i] * restr[i] + 
+                b_seas_d * season[i] * degrd[i] +  b_diel_r * diel[i] * restr[i] + 
+                b_diel_d * diel[i] * degrd[i] + b_p * rain1[i] + b_dp * degrd[i] * rain1[i] +
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_t * auto_t[i]  + b_auto_s * auto_s[i];
+    }
+
+    for ( i in 1:N ) log_lik[i] = normal_lpdf( y[i] | mu[i] , sigma );
+
+    for ( i in 1:N2 ) {
+        y_pred[i] = a + b_d * degrd_p[i] + b_r * restr_p[i] + b_rain365 * rain365_p[i] + 
+        b_seas * season_p[i] + b_diel * diel_p[i] +  b_seas_r * season_p[i] * restr_p[i] + 
+                b_seas_d * season_p[i] * degrd_p[i] +  b_diel_r * diel_p[i] * restr_p[i] + 
+                b_diel_d * diel_p[i] * degrd_p[i] + b_p * rain1_p[i] + b_dp * degrd_p[i] * rain1_p[i]  + 
+                b_rp * restr_p[i] * rain1_p[i] + b_t * t_p[i]; 
+    }
+
+}
+```
+
+```{r eval = TRUE}
+save(m_3ft_sdr_int_st_p, file = paste0(mod_dir, "compiled_models/wq_stan_m_3ft_sdr_int_st_p.rda"))
+```
+
+
+```{stan output.var="m_1ft_xxx_int_st_p"}
+data{
+    int<lower=1> N;
+    int<lower=1> N_site_no;
+    real y[N];
+    int site_no[N];
+    real degrd[N];
+    real restr[N];
+    real rain1[N];
+    real add1[N];
+    real add2[N];
+    real add3[N];
+    real t[N];
+    real auto_t[N]; // the temporal autocorrelation term
+    real auto_s[N]; // the spatial autocorrelation term
+    int n_st_miss;  // the number of data points missing both auto_s and auto_t
+    int n_s_miss;   // the number of data points missing auto_s (but not auto_t)
+    int n_t_miss;   // the number of data points missing auto_t (but not auto_s)
+    int n_no_miss;  // the number of data points with both auto_t and auto_s values
+    int st_miss[n_st_miss]; // indices of data points missing both auto_s and auto_t
+    int s_miss[n_s_miss];   // indices of data points missing auto_s (but not auto_t)
+    int t_miss[n_t_miss];   // indices of data points missing auto_t (but not auto_s)
+    int no_miss[n_no_miss]; // indices of data points with both auto_t and auto_s values
+    int<lower=1> N2;
+    real degrd_p[N2];
+    real restr_p[N2];
+    real rain1_p[N2];
+    real add1_p[N2];
+    real add2_p[N2];
+    real add3_p[N2];
+    real t_p[N2];
+
+}
+parameters{
+    real a;
+    real b_d;
+    real b_r;
+    real b_p;
+    real b_dp;
+    real b_rp;
+    real b_add1;
+    real b_add1p;
+    real b_add2;
+    real b_add3;
+    real b_auto_s;
+    real b_auto_t;
+    vector[N_site_no] a_s;
+    real<lower=0> a_s_sigma;
+    real b_t;
+    real<lower=0> sigma;
+    }
+model{
+    vector[N] mu;
+    sigma ~ cauchy( 0 , 2 );
+    b_t ~ normal( 0 , 5 );
+    a_s_sigma ~ cauchy( 0 , 2 );
+    a_s ~ normal( 0 , a_s_sigma );
+    b_r ~ normal( 0 , 5 );
+    b_d ~ normal( 0 , 5 );
+    b_p ~ normal( 0 , 5 );
+    b_dp ~ normal( 0 , 5 );
+    b_rp ~ normal( 0 , 5 );
+    b_add1 ~ normal( 0 , 5 );
+    b_add1p ~ normal( 0 , 5 );
+    b_add2 ~ normal( 0 , 5 );
+    b_add3 ~ normal( 0 , 5 );
+    b_auto_s ~ normal( 0 , 5 );
+    b_auto_t ~ normal( 0 , 5 );
+    a ~ normal( 0 , 10 );
+    for ( i in st_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + b_add3 * add3[i] +  
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + b_add1p * add1[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i];
+    }
+    for ( i in s_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + b_add3 * add3[i] +  
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + b_add1p * add1[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_t * auto_t[i];
+    }
+    for ( i in t_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + b_add3 * add3[i] +  
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + b_add1p * add1[i] * rain1[i] + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_s * auto_s[i];
+    }
+    for ( i in no_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + b_add3 * add3[i] +  
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + b_add1p * add1[i] * rain1[i] + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_t * auto_t[i]  + b_auto_s * auto_s[i];
+    }
+    y ~ normal( mu , sigma );
+}
+generated quantities{
+    vector[N] mu;
+    vector[N] log_lik;
+    vector[N2] y_pred;
+    for ( i in st_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + b_add3 * add3[i] +  
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + b_add1p * add1[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i];
+    }
+    for ( i in s_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + b_add3 * add3[i] +  
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + b_add1p * add1[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_t * auto_t[i];
+    }
+    for ( i in t_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] + b_add3 * add3[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + b_add1p * add1[i] * rain1[i]  + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_s * auto_s[i];
+    }
+    for ( i in no_miss ) {
+        mu[i] = a + a_s[site_no[i]] + b_d * degrd[i] + b_r * restr[i] + 
+                b_add1 * add1[i] + b_add2 * add2[i] +  b_add3 * add3[i] + 
+                b_p * rain1[i] + b_dp * degrd[i] * rain1[i] + b_add1p * add1[i] * rain1[i] + 
+                b_rp * restr[i] * rain1[i] + b_t * t[i] + 
+                b_auto_t * auto_t[i]  + b_auto_s * auto_s[i];
+    }
+    for ( i in 1:N ) log_lik[i] = normal_lpdf( y[i] | mu[i] , sigma );
+    for ( i in 1:N2 ) {
+        y_pred[i] = a + b_d * degrd_p[i] + b_r * restr_p[i] + 
+                    b_add1 * add1_p[i] + b_add2 * add2_p[i] +  b_add3 * add3_p[i] + 
+                    b_p * rain1_p[i] + b_dp * degrd_p[i] * rain1_p[i] + b_add1p * add1_p[i] * rain1_p[i] +                
+                    b_rp * restr_p[i] * rain1_p[i] + b_t * t_p[i]; 
+     }
+    }
+
+```
+
+```{r}
+save(m_1ft_xxx_int_st_p, file = paste0(mod_dir, "compiled_models/wq_stan_m_1ft_xxx_int_st_p.rda"))
+```
+
+
+

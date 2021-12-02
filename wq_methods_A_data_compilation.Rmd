@@ -1,0 +1,629 @@
+---
+title: "Dispersed urban-stormwater control improved stream water quality in a catchment-scale experiment"
+subtitle: "Supplementary methods A: Data compilation"
+author:
+  - Christopher J Walsh, Sam J Imberger, Matthew J Burns, Darren G Bos, and Tim D Fletcher
+date: "School of Ecosystem and Forest Sciences, The University of Melbourne, 500 Yarra Boulevard, Burnley, 3121 Victoria, Australia"
+output:   
+  word_document:
+    reference_docx: officedown_template.docx
+csl: ecol-app.csl
+nocite: |
+  @APHA_2005_frp, @APHA_2005_nh3, @APHA_2005_ec, @APHA_2005_nox, @APHA_2005_tss, @hosomi1986 
+editor_options: 
+  chunk_output_type: inline
+  markdown: 
+    wrap: 80
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, 
+                      message = FALSE, error = FALSE)
+# Packages required to run chunks in this document
+requiredPackages <- c("flextable","readxl","RPostgreSQL")
+lapply(requiredPackages, require, character.only = TRUE, quietly = TRUE)
+# Bespoke functions used in the document (table_for_word(),ct())
+source("code/misc_functions.R")  
+source("code/load_data_from_OSF.R")
+#functions for reading from database (only work in unimelb network)
+source("https://tools.thewerg.unimelb.edu.au/documents/mwstr/mwstr_functions.R")  #also loads required packages
+```
+
+## Introduction
+
+Data for the experiment are stored in two databases, `lsc` (mySQL), which houses
+the monitoring data, and `lsc_dbs_scms` (postgreSQL) on a University of
+Melbourne server, which houses the stormwater control intervention data, as
+described by @WalshEtAl_2021. This document describes and records the code used
+to extract the water quality data for analysis by @WalshEtAl_2022. The resulting
+data file ("wq_data_compiled.xlsx") is stored in the Open Science Framework repository
+<https://osf.io/4ywvq/>.
+
+### 1. Sites table
+
+Compile a `sites` simple features table listing the locations of water quality
+sampling sites. Although the sampling locations differ slightly from the
+hydrologic gauges used by [@li2022], all share the same catchment information.
+
+```{r}
+sites <- sqlQuery("SELECT * FROM sites WHERE sitecode IN 
+                 ('SAS0002', 'LYR0007', 'OLN0009','BRS0015','FER0006','DBS0004',
+                    'DBS0008', 'LIS0004H', 'LIS0001','LSS0001','LSN0001');", 
+                  "lsc_dbs_scms")
+sites$sitecode <- substr(sites$sitecode, 1,7)
+subcs <- sqlQuery(paste0("SELECT * FROM subcs WHERE \"pipeName\" IN ('", 
+                         paste(sites$sitecode, collapse = "', '"), "');"), 
+                  "lsc_dbs_scms")
+sites$sitecode <- factor(sites$sitecode, 
+                         levels = c('SAS0002', 'LYR0007', 'OLN0009', 'BRS0015',
+                                    'FER0006', 'DBS0004', 'DBS0008', 'LIS0004', 
+                                    'LIS0001','LSS0001','LSN0001'))
+sites$pipeID <- subcs$pipeID[match(sites$sitecode, subcs$pipeName)]
+cats <- sqlQuery("SELECT * FROM cats WHERE sitecode IN 
+                ('SAS0002', 'LYR0007', 'OLN0009','BRS0015','FER0006','DBS0004',
+                    'DBS0008', 'LIS0004H', 'LIS0001','LSS0001','LSN0001');", 
+                 "lsc_dbs_scms")
+sites$exp_treat <- cats$treatment[match(sites$sitecode, 
+                                        substr(cats$sitecode,1,7))]
+sites$carea_m2 <- cats$carea_m2[match(sites$sitecode, 
+                                      substr(cats$sitecode,1,7))]
+sites$col <- RColorBrewer::brewer.pal(3,"Dark2")[match(sites$exp_treat,
+                                                       c("R","E","C"))]
+sites$cat <- c("Sa","Ly","Ol","Br","Fe","D4","D8","L4","L1","Ls",
+               "Ln")[match(sites$sitecode,
+                c('SAS0002', 'LYR0007', 'OLN0009','BRS0015','FER0006','DBS0004',
+                   'DBS0008', 'LIS0004', 'LIS0001','LSS0001','LSN0001'))]
+sites$site_no <- as.integer(sites$sitecode)
+sites$stream_no <- sites$site_no
+sites$stream_no[sites$cat %in% c("D4","D8")] <- 6
+sites$stream_no[sites$cat %in% c("L4","L1","Ls","Ln")] <- 7
+sites <- sites[c("sitecode","cat","site_no","stream_no","exp_treat","pipeID",
+                 "col","carea_m2","geometry")]
+```
+
+Begin compiling a metadata table describing the fields of each table compiled
+here.
+
+```{r}
+metadata <- data.frame(table_name = "sites",
+                       field = names(sites),
+                       definition = 
+c("Site code used in original databases",
+  "Site code used in published papers",
+  "Integer site code used for site effect in linear models",
+  "Integer stream code used for site effect in linear models (grouping non-independent sites)",
+  "A priori experimental treatment (R, reference, C control, E experimental/impact)",
+  "pipeID from lsc_dbs_scms database for calculating impervious/stormwater control changes over time",
+  "Colours for plotting to distinguish treatments",
+  "Catchment area in sq m",
+  "site location (Map Grid of Australia, 1994, Zone 55, crs = 28355"),
+    stringsAsFactors = FALSE)
+```
+
+### 2. Water quality table
+
+Compile sample data for Electrical conductivity (EC), filterable reactive
+phosphorus (FRP), Ammonium (NH~4~^+^), Nitrate/Nitrite (NO~x~), total nitrogen
+(TN), total phosphorus (TP), total suspended solids (TSS). First prepare a table
+of variable definitions and methods.
+
+```{r}
+wq_vars <- c('TP','FRP','TN','NOx','NH3',"Tem",'EC','TSS') 
+wq_vars_tab <- sqlQuery(paste0("SELECT var, Variable, unit, method, detectionLmt FROM wqVars WHERE var IN ('",
+                               paste(wq_vars, collapse = "', '"), "');"),"lsc")
+wq_vars_tab <- wq_vars_tab[match(wq_vars, wq_vars_tab$var),]
+#Change values to match those used in paper
+wq_vars_tab$unit_in_paper <- c(rep("ug P/L",2),
+                      rep("mg N/L",2),"ug N/L",
+                      "degC","mS/cm","mg/L")
+wq_vars_tab$method <- c("Hosomi & Sudo (1986)",
+                        "APHA-AWWA-WEF (2005b)",
+                        "Hosomi & Sudo (1986)",
+                        "APHA-AWWA-WEF (2005a)","APHA-AWWA-WEF (2005c)",
+                        rep("Various meters: see main text",2),"APHA-AWWA-WEF (2005d)")
+names(wq_vars_tab) <- c("wq_var", "Variable", "Unit in wq_data", "Method", "Detection limit","Unit in paper")
+wq_vars_tab$`Detection limit`[wq_vars_tab$wq_var %in% c("Tem")] <- "-"
+ft <- table_for_word(wq_vars_tab)
+ft <- compose(ft, j = 1, i = 4, 
+          value = as_paragraph("NO", as_sub("x"))) 
+ft <- compose(ft, j = 1, i = 5, 
+          value = as_paragraph("NH", as_sub("4"), as_sup("+"))) 
+ft <- compose(ft, j = 6, i = 1:2, 
+          value = as_paragraph("\U03BC", "g P/L") )
+ft <- compose(ft, j = 6, i = 5, 
+          value = as_paragraph("\U03BC", "g N/L") )
+ft <- compose(ft, j = 6, i = 6, 
+          value = as_paragraph("\U00B0", "C") )
+ft
+```
+
+#### Table 1. Details of water quality variables compiled for analysis in this document.
+
+```{r fig.width = 7, fig.height = 4}
+wq_data <- sqlQuery(paste0("SELECT sites.sitecode, wqData.samplecode, wqData.wqvar, 
+                       wqData.conc, wqData.qualitycode, wqSamples.dateTime6min, 
+                       fieldTrips.tripNo, wqSamples.flowType #, streamflow.flow 
+                       FROM wqData 
+                       JOIN wqSamples ON 
+                            wqData.samplecode = wqSamples.samplecode 
+                       JOIN fieldTrips ON
+                            wqSamples.tripcode = fieldTrips.tripcode
+                       JOIN sites ON 
+                            wqSamples.sitecode = sites.sitecode
+                       # JOIN streamflow ON
+                       #           wqSamples.sitecode = streamflow.sitecode AND 
+                       #           wqSamples.dateTime6min = streamflow.dateTime
+                       WHERE wqData.wqvar IN ('",
+                       paste(wq_vars, collapse = "', '"), "') AND 
+                       wqSamples.sitecode IN ('",
+                       paste(sites$sitecode, collapse = "', '"),"');"), "lsc")
+wq_data$dateTime6min <- lubridate::ymd_hms(wq_data$dateTime6min)
+# # check of sampling intervals
+# temp <- wq_data[wq_data$sitecode == "LYR0007" & wq_data$wqvar == "TP",]
+# temp <- temp[order(temp$dateTime6min),]
+# diff(as.Date(temp$dateTime6min))
+```
+
+The sampling period spans 19 years: 29 months of sampling Sep 2000 - Jan 2003,
+21 months Feb 2004 - Nov 2005 (except BRS0015 and FER0006), and 10 years May
+2009 - Jul 2019. Sampling was regular (two-weekly in 2000-2003, monthly
+thereafter) plus event samples taken to adequately represent high-flow
+conditions. Additional samples were taken occasionally for other purposes (e.g.
+to match collection of leaf-packs for decomposition measurements). Most of these
+additional samples were retained for analysis, except for a small number for
+reasons described below accompanying the code that deletes them.
+
+Additional samples were assessed for exclusion by inspecting duplicate samples
+in the extracted data.
+
+```{r}
+duplicates <- wq_data[substr(wq_data$samplecode,nchar(wq_data$samplecode),
+           nchar(wq_data$samplecode)) != "1",]
+```
+
+The 7 EC samples at LSN0001 on 2013-07-29 were a salt-dosing experiment: all but
+the first of these were excluded.
+
+```{r}
+wq_data <- wq_data[!wq_data$samplecode %in% paste0("504LSN00010",2:7),]
+```
+
+586LIS000101 and 586LIS000102 were collected to check what may have been an
+overflowing sewage pit at LIS0001. The first was collected from adjacent to the
+sewage pit and the second from a pool 10 m us of the sewage pit. Just the one
+upstream is used, to avoid 'point-source' effects, noting that the effect of the
+pit, if any, will be picked up by the LIS0004 sample downstream.
+
+```{r}
+wq_data <- wq_data[!wq_data$samplecode %in% "586LIS000101",]
+```
+
+Two samples from LYR on 12-12-2001 do not match the field records. They were
+taken 1.5 h apart, and are unusually different from each other. They were
+deleted to be conservative.
+
+```{r}
+wq_data <- wq_data[!wq_data$samplecode %in% c("112LYR000701","112LYR000702"),]
+```
+
+All other 'duplicates' were samples taken on the same day under different flow
+conditions (trips 504,586,619 e.g.
+`wq_data[grep("586LIS00010",wq_data$samplecode),]`). These have been retained.
+
+A complication for the analysis is the spatial dependence between the three
+Little Stringybark tributary sites and the main-stem site (LIS0004). Many
+samples were taken at LIS0004 on days when no equivalent sample was taken at the
+upstream sites. Stan analyses require indexing solutions to missing data, and
+the separation of the dataset into days with only LIS0004 samples and days with
+samples from all four sites is relatively simple. There were only 6 occasions
+when a subset of tributary sites were sampled rather than all 3. To simplify
+indexing to account for missing data, we removed the samples taken on those 6
+days from the dataset, with little lost information in the analysis.
+
+On 59 days, we collected FRP, NH~4~^+^ and NO~x~ samples for monitoring of
+leaf-pack decomposition (a stream response variable to be reported in a future
+study), without collecting other variables. To ensure consistency with the
+paper's reporting of samples having been collected regularly (bi-weekly or
+monthly), and during 6--12 rain events per year, we excluded records from those
+59 dates. The resulting spread of data for the seven response variables is shown
+in Fig. 1.
+
+```{r}
+frp_lis4 <- wq_data$samplecode[wq_data$sitecode == "LIS0004" & wq_data$wqvar == "FRP"] 
+wq_lis <- wq_data[wq_data$sitecode %in% c("LIS0004","LIS0001","LSN0001","LSS0001") &
+                    wq_data$wqvar == "FRP",] 
+nsamps_lis <- aggregate(wq_lis$sitecode, 
+                        by = list(date = as.Date(wq_lis$date, "days"), 
+                                  tripNo = wq_lis$tripNo), FUN = length)
+nsamps_lis <- nsamps_lis[nsamps_lis$date > as.Date("2011-03-03"),] 
+prob_dates <- nsamps_lis$date[nsamps_lis$x != 4] 
+# 6 dates with not all tribs sampled
+# "2013-03-19" "2013-04-03" "2013-04-16" "2013-05-02" "2013-05-27" "2017-01-10" 
+prob_trips <- nsamps_lis$tripNo[nsamps_lis$x != 4] 
+# 491 493 496 497 and 500 are all activity = 5 (leafpack experiment) 
+# 619 was a one-off sample taken at LIS
+wq_data <- wq_data[!wq_data$tripNo %in% c(491, 493, 496, 497, 500, 619),] 
+#And furthermore the leafpack samples cause TSS, TP and TN to be unbalanced with other variables.. 
+leafpack_trips <- sqlQuery("SELECT DISTINCT tripNo 
+                           FROM fieldTrips WHERE activity1 = 5;", "lsc")$tripNo 
+# This constitutes 60 trips - 1 of these also included the full suite of wqvars,
+leafpack_trips <- leafpack_trips[!leafpack_trips %in% 
+    unique(wq_data$tripNo[wq_data$tripNo %in% leafpack_trips & wq_data$wqvar == "TSS"])]
+# Should check that removing these makes no difference to inference
+wq_data <- wq_data[!wq_data$tripNo %in% leafpack_trips,]
+```
+
+```{r}
+check_var <- match(wq_data$wqvar,wq_vars)
+labs <- data.frame(unique(cbind(wq_data$wqvar,check_var)))
+labs <- labs[order(labs$check_var),]
+plot(wq_data$dateTime6min, as.numeric(check_var), axes = FALSE, 
+     xlab = "", ylab = "")
+axis.POSIXct(1, seq.POSIXt(as.POSIXct("1995-01-01"),as.POSIXct("2025-01-01"),
+                           by = "5 years"))
+axis(2, at = 1:8, labels = labs$V1, las=1)
+box(type = 'l')
+```
+
+#### Fig. 1. Spread of dates on which samples were taken for the 7 focus water quality variables.
+
+With the data cleaned, plots of the raw data over time at each site were
+inspected (Figs. 2-9).
+
+```{r fig.width = 7, fig.height = 4}
+for(v in 1:length(wq_vars)){
+  layout(matrix(c(1:5,1,6:9,1,10,11,12,0),3,5, byrow = 2),
+         widths = c(1,10,10,10,10), heights = c(10,10,10))
+  par(mar = c(0,0,0,0)); plot.new()
+  if(wq_vars[v] %in% c("NOx","EC")){
+   title(ylab = paste0("sqrt(",wq_vars_tab$Variable, 
+                      " [", wq_vars_tab$Unit, "])")[v], line = -0.9)
+   
+  }else{
+  title(ylab = paste0("log10(",wq_vars_tab$Variable, 
+                      " [", wq_vars_tab$Unit, "])")[v], line = -0.9)
+ }
+  par(mar = c(2,2,1,0))
+  seti <- wq_data[wq_data$wqvar == wq_vars[v],]
+  for(s in 1:length(sites$sitecode)){
+    if(wq_vars[v] %in% c("NOx","EC")){
+      seti$y <- seti$conc^0.5}else{seti$y <- log10(seti$conc)}
+    with(seti[seti$sitecode == sites$sitecode[s],],
+    plot(dateTime6min, y, xlab = "", xlim = range(seti$dateTime6min),
+         ylim = range(seti$y), las = 1, ylab = ""))
+    title(main = sites$sitecode[s], adj = 0, font = 1)
+  }
+}
+```
+
+These plots confirm the appropriateness a square-root transformation NO~x~ and
+EC and square-root transformation for other variables to approximate a normal
+distribution for modelling.
+
+We then arranged the data into in a wide table, grouped by samplecode. This
+table revealed some imbalance among variables in the dataset (i.e. some dates
+not all variables were sampled), but it is a small proportion of the dataset,
+and we considered it best to use all the information at hand.
+
+```{r}
+wq_data_ct <- ct(wq_data$samplecode, wq_data$wqvar, 
+                 wq_data$conc, FUN = length,  convertNAToZero = FALSE ) 
+#apply(wq_data_ct,2,FUN = max, na.rm = TRUE) 
+ #all 1s - no duplicate samples, so 
+wq_data_ct <- ct(wq_data$samplecode, wq_data$wqvar, wq_data$conc, 
+                 FUN = mean, convertNAToZero = FALSE )
+wq_data_ct$samplecode <- row.names(wq_data_ct) 
+row.names(wq_data_ct) <- 1:dim(wq_data_ct)[1]
+wq_data_ct$sitecode <- substr(wq_data_ct$samplecode, 4,10) 
+wq_data_ct$site_no <- sites$site_no[match(wq_data_ct$sitecode, sites$sitecode)]
+wq_data_ct$stream_no <- sites$stream_no[match(wq_data_ct$sitecode, sites$sitecode)]
+wq_data_ct$date_time <- NA 
+for(i in 1:dim(wq_data_ct)[1]){
+wq_data_ct$date_time[i] <- sqlQuery(paste0("SELECT dateTime 
+                                           FROM wqSamples WHERE samplecode = '", 
+                                           wq_data_ct$samplecode[i], 
+                                           "';"), "lsc")$dateTime 
+}
+wq_data_ct$date_time <- as.POSIXct(wq_data_ct$date_time)
+```
+
+### 3. Predictor data for each sample
+
+Load the effective imperviousness time series data. If you do not have access to
+the database, the commented out first line of the chunk below downloads the data
+from the data repository of @WalshEtAl_2021.
+
+```{r}
+#source("code/build_ei_data.R")
+ei_ts <- sqlQuery("SELECT * FROM Treatments;", "lsc")[,-1]
+ei_ts$date <- as.Date(ei_ts$date)
+# confusing names need changing
+names(ei_ts)[match(c("ei","eb","wq","fv","vr","ro","s"),names(ei_ts))] <-
+       c("ei_s1","ei_s","ei_sw","ei_sf","ei_sv","ei_sr","ei_s0")
+# Compile site statistics for Table 1
+for(i in 1:dim(sites)[1]){
+  sites$EI_S1_2001[i] <- min(ei_ts$ei_s1[ei_ts$sitecode == sites$sitecode[i]])
+  sites$EI_S1_2019[i] <- max(ei_ts$ei_s1[ei_ts$sitecode == sites$sitecode[i]])
+  sites$EI_S_2019[i] <- tail(ei_ts$ei_s[ei_ts$sitecode == sites$sitecode[i]],1)
+}
+# Calculate indices matching those reported in Walsh et al. 2021 
+# EI_s1, EI_s1, and EI_s0 as in Fig. 4 of Walsh et al. 2021
+# (all three are equivalent from the reference and control catchments)
+ei_ts$lei_s <- log10(ei_ts$ei_s * 100 + 0.1)
+ei_ts$lei_s1 <- log10(ei_ts$ei_s1 * 100 + 0.1)
+ei_ts$lei_s0 <- log10(ei_ts$ei_s0 * 100 + 0.1)
+# del_EI_s and del_EI_s0 as in Fig. 5 of Walsh et al. 2021
+ei_ts$del_ei_s <-  ei_ts$lei_s - ei_ts$lei_s1
+ei_ts$del_ei_s0 <-  ei_ts$lei_s0 - ei_ts$lei_s1
+# with(ei_ts[ei_ts$sitecode == "LSN0001",],
+#      plot(date, lei_s0, type = 'l', ylim = c(-1.5,1)))
+# with(ei_ts[ei_ts$sitecode == "LSN0001",],
+#      lines(date, del_ei_s, col = "red"))
+# with(ei_ts[ei_ts$sitecode == "LSN0001",],
+#      lines(date, del_ei_s0, col = "green"))
+wq_data_ct$lei_s1 <- 
+    ei_ts$lei_s1[match(paste(wq_data_ct$sitecode,as.Date(wq_data_ct$date_time)),paste(ei_ts$sitecode,ei_ts$date))]
+wq_data_ct$del_ei_s <- 
+    ei_ts$del_ei_s[match(paste(wq_data_ct$sitecode,as.Date(wq_data_ct$date_time)),paste(ei_ts$sitecode,ei_ts$date))]
+#important values for predicting to:
+#-1 as a stretch, then 6 evenly(-ish) spaced del_ei values matching what was 
+# achieved in our six experimental creeks, + zero for the base case
+restr_p <- c(-1,
+min(wq_data_ct$del_ei_s[wq_data_ct$sitecode == "LSN0001"]),
+min(wq_data_ct$del_ei_s[wq_data_ct$sitecode == "LSS0001"]),
+min(wq_data_ct$del_ei_s[wq_data_ct$sitecode == "LIS0004"]),
+min(wq_data_ct$del_ei_s[wq_data_ct$sitecode == "DBS0008"]),
+min(wq_data_ct$del_ei_s[wq_data_ct$sitecode == "DBS0004"]),
+min(wq_data_ct$del_ei_s[wq_data_ct$sitecode == "LIS0001"]),0)
+# range(10^(wq_data_ct$lei_s1) - 0.1) 0 - 25.5....
+# 9 evenly(ish) spaced on a log-scale, including 2018 values of EIs1 for DBS0008 (2.0497), DBS0004 (2.5481), LSN (6.1793), LIS004 (10.207), LSS (13.3356),  LIS0001 (25.529)
+degrd_p <- log10(c(0,0.3,1,2.0497,2.5481,6.18,10.2,13.336,20,25.529) + 0.1)  #
+#But exclude restr_p < 0 & degrd_p <= 0.1 (i.e. no restoration possible for reference sites)
+```
+
+Two measures of antecedent rainfall:
+
+-   Rainfall in the 24 hours before each sample (*Rain1*) as a likely indicator
+    of quickflow contribution to streamflow, which in turn is likely to affect
+    contaminant concentrations.
+
+-   Rainfall in the preceding year (*Rain365*) as a predictor, indicating
+    baseflow contributions to streamflow. The unweighted sum of rainfall in the
+    preceding year was selected after comparing temporal trends in this
+    variable, and longer periods (up to 4 years), and also exponentially
+    weighted antecedent rainfall with half-decay periods of 1, 1.5, 2, 3, and 4
+    years. Unweighted measures were less variable over time than weighted
+    measures, and *Rain365* best represented the three dry autumns when Ly dried
+    out completely.
+
+```{r variable_rain}
+# predictor vars: antecedent rain (1 d, 365 days)
+# catchment rainfall for L4 used for three upstream tribs, 
+# catchment rainfall for D4 used for D8
+system.time({  #~14 min
+wq_data_ct$rainsite <- wq_data_ct$sitecode
+wq_data_ct$rainsite[wq_data_ct$sitecode == "DBS0008"] <- "DBS0004"
+wq_data_ct$rainsite[wq_data_ct$sitecode %in%
+                     c("LIS0001","LSN0001","LSS0001")] <- "LIS0004"
+rain <- data.table::data.table(sqlQuery("SELECT sitecode, dateTime, Rain_depth FROM rainfall;", "lsc")) #12 s
+rain$dateTime <- lubridate::ymd_hms(rain$dateTime, tz = "UTC")
+anterain <- function(rainsite, date_time, ante_period_days = 1){
+x <- rain[rain$sitecode == rainsite & rain$dateTime < date_time &
+            rain$dateTime >= date_time - lubridate::days(ante_period_days),]
+ar <- sum(x$Rain_depth)
+ar
+}
+for(i in 1:nrow(wq_data_ct)) {
+    wq_data_ct$rain1[i] <- log10(anterain(rainsite = wq_data_ct$rainsite[i], 
+                                   date_time = wq_data_ct$date_time[i], 
+                                   ante_period_days = 1) + 1)
+     wq_data_ct$rain365[i] <- log10(anterain(rainsite = wq_data_ct$rainsite[i], 
+                                   date_time = wq_data_ct$date_time[i], 
+                                   ante_period_days = 365))
+}
+})
+
+diff(range(wq_data_ct$rain1))
+# range 1.76
+#heavily weighted to zero (39% of records = 0) - centre and spread in wq_model_sampling.Rmd
+diff(range(wq_data_ct$rain365))
+# range 0.412
+# for prediction data set
+rain1_p <- log10(c(0,1,2,5,8,13.5,20) + 1)
+# 0, 2, 8, 13.5 are approximately 50, 75, 90 and 95 percentile rainfalls for LIS0004
+# lsc_rain <- sqlQuery("SELECT * FROM rainfall WHERE sitecode = 'LIS0004';", "lsc")
+# lsc_rain$date <- as.Date(lsc_rain$dateTime)
+# lsc_rain <- aggregate(lsc_rain$Rain_depth, by = list(date = lsc_rain$date), FUN = sum)
+# quantile(lsc_rain$x, c(0.5,0.75,0.90,0.95)) #2.22, 8.1, 13.5  #2.0, 7.7, 12.7 for Brushy Creek
+rain365_p <- 0 #Only predict average conditions (rain365 is centred in wq_model_sampling.Rmd)
+```
+
+A binary variable (*channel*) to indicate any effects on LSN0001 and LSN0004, of
+a major disturbance of fine in-stream sediments and vegetation upstream of
+LSN0001 in October 2016. For these two sites, *channel* was set to 1 for the two
+years following the disturbance, after which the channel had restabilised and
+in-stream vegetation had re-grown. *Channel* equalled zero for all other cases.
+
+```{r variable_channel}
+wq_data_ct$channel <- 0
+wq_data_ct$channel[wq_data_ct$sitecode %in% c("LSN0001","LIS0004") & 
+             wq_data_ct$date > as.Date("2016-10-19") &  wq_data_ct$date < as.Date("2018-10-31")] <- 1
+```
+
+A variable representing seasonal variation (*season*), a sin wave ranging
+between -1 (on the winter solstice) and 1 (on the summer solstice): potentially
+applicable to nutrients, DO, temperature (Fig. 10).
+
+```{r}
+season_sin <- function(date, max1 = "21-12", # day-month when maximum value is desired
+                       year0 = "1999"        # year from which to start calculation
+                       ){
+  date0 <- as.numeric(as.Date(paste(year0,unlist(strsplit(max1,"-"))[2],
+                                     unlist(strsplit(max1,"-"))[1],sep="-")) - months(3))
+  date_scaled <- 2*pi*(as.numeric(date) - date0)/365.2525
+  sin(date_scaled)
+}
+wq_data_ct$season <- season_sin(as.Date(wq_data_ct$date_time))
+plot(wq_data_ct$date_time[wq_data_ct$date_time < "2003-01-01"], wq_data_ct$season[wq_data_ct$date_time < "2003-01-01"],
+     xlab = "Date (first sampling period only)", ylab = "season")
+season_p <- c(1, 0, -1) # predict to summer solstice, equinox and winter solstice
+```
+
+#### Fig. 10. Variation in values of *season* variable among samples taken before Jan 2003.
+
+A variable representing diel variation (*diel*), a sin wave ranging between -1
+(at 0600 h) and 1 (at 1800 h): potentially applicable to temperature (Fig. 11)
+
+```{r}
+diel_sin <- function(date_time, #POSIXct object
+                     max1 = "18:00:00") { # hh:mm:ss at which diel_sin = 1
+  date_time0 <- as.numeric(lubridate::ymd_hms(paste("2000-01-01", max1)))
+  date_time_scaled <- 2 * (pi*(0.25 + (as.numeric(date_time) - date_time0)/86400))
+  sin(date_time_scaled)
+}
+# test <- seq.POSIXt(lubridate::ymd_hms("2001-01-01 18:00:00"), lubridate::ymd_hms("2001-01-03 18:00:00"), "hours")
+# plot(test, diel_sin(test))
+wq_data_ct$diel <- diel_sin(wq_data_ct$date_time)
+plot(wq_data_ct$date_time[wq_data_ct$date_time < "2001-10-01"], wq_data_ct$diel[wq_data_ct$date_time < "2001-10-01"],
+     xlab = "Date (first sampling period only)", ylab = "season")
+diel_p <- 1 #just predict to the warmest time of day
+```
+
+#### Fig. 11. Variation in diel among samples collected in September 2001.
+
+Septic tank density in each catchment (*sep*), from data supplied by Yarra
+Ranges Council and South-East Water recording locations of unsewered properties
+in the study catchments. The data were square-root-transformed to reduce
+leverage of large values, and divided by 10 to scale to a range of 0.03-1.18
+comparable with other predictors.
+
+```{r}
+# sites_mwstr <- sqlQuery("SELECT sites.* FROM sites JOIN site_groups ON sites.sitecode = site_groups.sitecode WHERE site_groups.group = 'Little Stringybark Creek study';", "mwbugs") 
+# sites_mwstr$old_sitecode[sites_mwstr$old_sitecode == "LIS0000"] <- "LIS0001"
+# seps <- sqlQuery(paste("SELECT subcs.reach, subc_env.* FROM subc_env JOIN subcs ON subc_env.site = subcs.site WHERE subcs.reach IN ('", 
+#                            paste(sites_mwstr$reach, collapse = "', '"), "');", sep = ""), "mwstr_dev")
+# #Coverage of septic tank data ends just upstream of BRS site, assume this well sewered bit at the bottom of the catchment has no additional 
+# #septics
+# brs_seps <- sqlQuery("SELECT subcs.reach, subc_env.* FROM subc_env JOIN subcs ON subc_env.site = subcs.site WHERE subcs.reach = 'BRS-1459';", "mwstr_dev")$nc_septic
+# seps$nc_septic[seps$reach == "BRS-1472"] <- brs_seps
+# seps$nc_septic[seps$reach %in% c("LSS-96","LIS-453")]  <- seps$nc_septic[seps$reach %in% c("LSS-96","LIS-453")] - 15
+# #I'm going to get more correct data from Rhys Eddy at YVW, but for now, I am fairly certain that the 
+# # 15 tanks mapped in the retirement village opposite the petrol station are not real, 
+# # and therefore will remove these from the counts for LSS and LIS4
+# seps$septic_n_km2 <- seps$nc_septic/seps$carea_km2
+# seps$old_sitecode <- sites_mwstr$old_sitecode[match(seps$reach, sites_mwstr$reach)]
+# #keep a temporary copy until final data sorted
+# write.csv(seps, file = "data/septic_densities.csv", row.names = FALSE)
+seps <- read.csv("data/septic_densities.csv", stringsAsFactors = FALSE)
+sites$septics <- seps$septic_n_km2[match(sites$sitecode,seps$old_sitecode)]
+#square root to reduce leverage of large values, and divide by 10 to scale to range of 0.03-1.18
+seps$septics <- (seps$septic_n_km2^0.5)/10
+wq_data$septic <- seps$septics[match(wq_data$sitecode, seps$old_sitecode)]
+wq_data_ct$septic <- seps$septics[match(wq_data_ct$sitecode, seps$old_sitecode)]
+septic_p <- 0 # set at 0 and the value of the six experimental sites...this is done in wq_model_sampling_with_Xpred, as it is only of relevancd to NOx and TN.
+
+#rearrange sites table
+sites <- sites[c(names(sites)[names(sites) != "geometry"], "geometry")]
+#amend metadata
+metadata <- rbind(metadata, data.frame(table_name = "sites",
+                                       field = c("EI_S1_2001","EI_S1_2019","EI_S_2019","septics"),
+                                       definition = c("EI_S1 (effective imperviousness assuming no stormwater control measures) in 2001 (see Walsh et al 2022 for further information",
+                                       "EI_S1 in 2019",
+                                       "EI_S (effective imperviousness accounting for stormwater control measures) in 2001 (see Walsh et al 2022 for further information",
+                                       "Catchment septic tank density (N/km2)"),
+                                       stringsAsFactors = FALSE))
+```
+
+A binary variable, *filter*, to separate the period of sampling up to Jan 2003,
+when 0.2 $\mu$m filters were used to sample NO~x~, NH~4~^+^, and FRP, from the
+subsequent samples for which 0.45 $\mu$m filters were used.
+
+```{r}
+wq_data_ct$filter <- 1
+wq_data_ct$filter[wq_data_ct$date_time < "2003-06-01"] <- 0
+# set to 1 for predictions.
+```
+
+Finalize the predictor data set for producing counterfactual plots
+
+```{r}
+new_X <- as.data.frame(
+           model.matrix(~degrd + restr + rain1 + rain365 + channel + season + diel + septic + t,
+                    expand.grid(degrd = degrd_p, restr = restr_p, rain1 = rain1_p,
+                                rain365 = rain365_p, channel = c(0,1), season = season_p,
+                                diel = diel_p,  
+                                septic = 0, filter = 1,
+                                t = 1.5))) #end of study
+new_X <- new_X[,-1] #remove intercept column
+# Add 2 scenarios: reference site at start (Sep 2001) and fin of study (July 2019), season = 0, diel = 0
+# 1. average over year (for placing estimate of long-term temp increase into context of global warming estimates)
+add_X <- new_X[new_X$restr == 0 & new_X$degrd == -1 & new_X$rain1 == 0 & 
+                              new_X$channel == 0 & new_X$season == 0,]
+add_X <- rbind(add_X, add_X)
+add_X$diel <- 0        # middle of day or night
+add_X$t <- c(-1.5,1.5) #at start of study
+new_X <- rbind(new_X, add_X)
+```
+
+Finalize the metadata table
+
+```{r metadata_fin}
+metadata_vars <- data.frame(table_name = "wq_vars",
+                            field = names(wq_vars_tab),
+                            definition = c("Abbreviated names of water quality variable, matching variable names in wq_data table",
+                                           "Full name of water quality variable",
+                                           "Unit of values in wq_data table",
+                                           "Method reference: see lsc_dbs_wq.bib",
+                                           "Detection limit in mg/L (for concentrations)",
+                                           "Unit of values reported in paper"))
+
+
+# re-name predictors to be consistent with paper terminology
+names(wq_data_ct)[match(c("lei_s1", "del_ei_s"),names(wq_data_ct))] <-
+  c("degrd","restr")
+# centre and scale time
+wq_data_ct$t <- as.numeric(wq_data_ct$date_time)
+wq_data_ct$t <- 3*(wq_data_ct$t - (min(wq_data_ct$t) + diff(range(wq_data_ct$t))*0.5) )/ diff(range(wq_data_ct$t))
+
+wq_data_ct <- wq_data_ct[c("samplecode","sitecode","site_no","stream_no",
+                           "date_time","degrd", "restr","rain1","rain365",
+                           "channel","season","diel","septic","filter","t",
+                           "EC","FRP","NH3","NOx","TN","TP","TSS","Tem")]
+fdef <- function(i) paste0("Concentration of ", wq_vars_tab$Variable[i], 
+                                           " (", wq_vars_tab$Unit[i],")")
+metadata_wq_data <- data.frame(table_name = "wq_data",
+                               field = names(wq_data_ct),
+                               definition = c("Sample code",
+                                              "Site code",
+                                              "Integer site number (for coding in Stan)",
+                                              "Integer stream number (grouping the 4 LSC sites and 2 Dobsons sites)",
+                                              "Date and time of sample (timezone set at UTC, but actually local time)",
+                                              "log10(% EI_s1 + 1): EI assuming no stormwater control measures in the catchment (Walsh et al. 2021)",
+                                              "difference between log10(% EI_s + 0.1) (EI accounting for SCM performance) and lei_s1 (Walsh et al. 2021)",
+                                              "log10(Rainfall in antecedent 24 h  + 1) (mm)",
+                                              "log10(Exponentially weighted rainfall in antecedent year) (mm)",
+                                              "1 for samples from two sites affected by upstream channel works in late 2016 (for 2 years after the works), 0 for all other samples",
+                                              "sinusoidal variable representing seasonal variation (summer solstice = 1, winter solstice = -1)",
+                                              "sinusoidal variable representing diel variation (1800 h = 2, 0600 h = -2)",
+                                              "Catchment septic tank density (N/km2)",
+                                              "0 for samples collected with 0.2 micron filters, 1 for samples collected with 0.45 micron filters",
+                                              "Centred and standardised time",
+                                              "Electrical Conductivity (us/cm)",
+                                              fdef(2),fdef(3),fdef(4),
+                                              fdef(5),fdef(6),fdef(7),
+                                              "Temperature (degrees Celsius)"))
+metadata <- rbind(metadata, metadata_vars, metadata_wq_data,
+                  data.frame(table_name = "new_X",
+                               field = NA,
+                               definition = "Matrix of predictors for producing counterfactual plots: "))
+```
+
+Compile the tables into an excel worksheet for placing on a repository.
+
+```{r}
+WriteXLS::WriteXLS(list(sites = sites, wq_data = wq_data_ct, 
+                        wq_vars = wq_vars_tab, new_X = new_X, metadata = metadata),
+                   "data/wq_data_compiled.xlsx")
+```
+
+### References

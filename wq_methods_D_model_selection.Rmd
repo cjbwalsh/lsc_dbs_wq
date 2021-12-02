@@ -1,0 +1,642 @@
+---
+title: "Dispersed urban-stormwater control improved stream water quality in a catchment-scale experiment"
+subtitle: "Supplementary methods D: model selection"
+author:
+  - Christopher J Walsh, Sam J Imberger, Matthew J Burns, Darren G Bos, and Tim D Fletcher
+date: "School of Ecosystem and Forest Sciences, The University of Melbourne, 500 Yarra Boulevard, Burnley, 3121 Victoria, Australia"
+output:   
+  word_document:
+    reference_docx: officedown_template.docx
+csl: ecol-app.csl
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, error = FALSE)
+library(rstan); library(loo)
+source("code/misc_functions.R")
+ys <- c("lFRP","lTP","lNH3","lTSS","lTN","sNOx","sEC","Tem")
+vars <- c("frp","tp","nh3","tss","tn","nox","ec","tem")
+sites <- data.frame(readxl::read_excel("data/wq_data_compiled.xlsx", 
+                                         sheet = "sites"))
+wq_data <- data.frame(readxl::read_excel("data/wq_data_compiled.xlsx", 
+                                         sheet = "wq_data"))
+wq_data$date_time <- lubridate::ymd_hms(wq_data$date_time)
+# centre and scale time
+wq_data$t <- as.numeric(wq_data$date_time)
+wq_data$t <- 3*(wq_data$t - (min(wq_data$t) + diff(range(wq_data$t))*0.5) )/ diff(range(wq_data$t))
+# set grouping variables as integers (as expected by Stan)
+wq_data$site_no <- as.integer(wq_data$site_no)
+wq_data$stream_no <- as.integer(wq_data$stream_no)
+# Leave rain1 uncentred, range 0-1.76, and median 0. Useful to have 0 as the median.
+# Centre and scale rain365 and septic
+wq_data$rain365 <- 3*(wq_data$rain365 - (min(wq_data$rain365) + 
+                                           diff(range(wq_data$rain365))*0.5) )/ diff(range(wq_data$rain365))
+wq_data$septic <- 3*(wq_data$septic - (min(wq_data$septic) + 
+                                           diff(range(wq_data$septic))*0.5) )/ diff(range(wq_data$septic))
+
+#Appropriate transformations for the eight variables
+wq_data$lFRP <- log10(wq_data$FRP)
+wq_data$lTP <- log10(wq_data$TP)
+wq_data$lNH3 <- log10(wq_data$NH3)
+wq_data$lTSS <- log10(wq_data$TSS)
+wq_data$sNOx <- wq_data$NOx^0.5
+wq_data$sEC <- wq_data$EC^0.5
+wq_data$lTN <- log10(wq_data$TN)
+wq_data$lTem <- log10(wq_data$Tem)
+
+sites <- unique(wq_data[c("sitecode","site_no")])
+sites <- sites[order(sites$site_no),]
+sites$cat <- c("Sa","Ly","Ol","Br","Fe","D4","D8","L4","L1","Ls",
+               "Ln")[match(sites$sitecode,
+                c('SAS0002', 'LYR0007', 'OLN0009','BRS0015','FER0006','DBS0004',
+                   'DBS0008', 'LIS0004', 'LIS0001','LSS0001','LSN0001'))]
+# Set the directory for reading the (large) model objects from: 
+# I used a directory on a network drive
+mod_dir <- "[Network Drive]/git-data/lsc_dbs_wq/model_fits" #
+```
+
+This document compares the fits of models sampled and saved in `wq_model_sampling.Rmd` using Stan model objects compiled in `wq_model_compilation.Rmd` to model the water quality data compiled in `wq_data_compilation.Rmd`. The model structures and the outputs of this document are detailed in `wq_manuscript.Rmd`.
+
+In each model the response variable is one of transformed filterable reactive phosphorus (FRP), total phosphorus (TP),
+Ammonium (NH~4~^+^), total suspended solids (TSS), nitrate + nitrite (NO~x~), total nitrogen (TN), electrical
+conductivity (EC) or temperature. 
+
+The following chunks compile:  
+
+- a table of all candidate models (saved as "");
+
+- an excel workbook with a worksheet for each response variable, with model comparison statistics used to select the optimal model. For FRP, NH~4~^+^ and NO~x~, initial candidate models included the *filter* predictor. This is revised, and separate worsheets for each of these variables comparing models without *filter* are compiled in the following chunk.
+
+```{r eval = FALSE}
+# all_mods <- dir(mod_dir)
+# all_mods <- all_mods[substr(all_mods,1,4) == "fit_" & !grepl("_p",all_mods)]
+# mod_summ <- data.frame(file_name = all_mods, model = NA, response_var = NA, 
+#                        var = NA, channel = NA, season = NA, rain365 = NA, 
+#                        septic = NA, optimal_model = 0)
+# for(i in 1:length(all_mods)){
+#   mod_summ$var[i] <- unlist(strsplit(all_mods[i],"_")[[1]][2])
+#   mod_summ$model[i] <- gsub(paste0("fit_",mod_summ$var[i],"_"), "", mod_summ$file_name[i])
+#   mod_summ$model[i] <- gsub(".rda", "", mod_summ$model[i])
+#   mod_summ$response_var[i] <- ys[which(vars == mod_summ$var[i])]
+#   mod_summ$channel[i] <- as.numeric(grepl("c",unlist(strsplit(all_mods[i],"_")[[1]][5])))
+#   mod_summ$season[i] <- as.numeric(grepl("s",unlist(strsplit(all_mods[i],"_")[[1]][5])))
+#   mod_summ$rain365[i] <- as.numeric(grepl("r",unlist(strsplit(all_mods[i],"_")[[1]][5])))
+#   mod_summ$septic[i] <- as.numeric(grepl("e",unlist(strsplit(all_mods[i],"_")[[1]][5])))
+#   mod_summ$filter[i] <- as.numeric(grepl("f",unlist(strsplit(all_mods[i],"_")[[1]][5])))
+# }
+# write.csv(mod_summ, "data/mod_summ_temp.csv", row.names = FALSE)
+# #  This imperfect summary of the models was used to crosscheck the following manually compiled excel file
+mod_summ <- data.frame(readxl::read_excel("data/all_models.xlsx"), stringsAsFactors = FALSE)
+mod_summ$var <- tolower(mod_summ$wq_var)
+mod_summ$file_name <- paste0("fit_", mod_summ$var, "_", mod_summ$model_code,".rda")
+mod_summ$optimal_model <- 0
+loo_sum <- list()
+
+# Each variable/model required supervision/checking. For every model, 
+# diagnostics were checked and posterior distributions inspected.
+ mod_summv <- mod_summ[mod_summ$var == "frp",]
+ looic_frp <- list()
+ # Check model diagnostics for each candidate model
+  for(i in 1:dim(mod_summv)[1]){
+    assign("modvi", get(load(paste0(mod_dir,"/",mod_summv$file_name[i]))))
+    cat(mod_summv$model_code[i])
+    check_hmc_diagnostics(modvi)
+    looic_frp[[i]] <- loo(modvi)
+    rm(modvi)
+    gc()
+  }
+ loos <- as.data.frame(loo::loo_compare(looic_frp))
+ # see https://mc-stan.org/loo/articles/loo2-weights.html
+ stacking_wts <- loo::loo_model_weights(looic_frp)
+ loos$stacking_wt <- round(stacking_wts[match(row.names(loos),names(stacking_wts))],2)
+ pseudobma_wts <- loo::loo_model_weights(looic_frp, method = "pseudobma")
+ loos$pseudobma_wt <- round(pseudobma_wts[match(row.names(loos),names(pseudobma_wts))],2)
+ #looic by default names models model1, model2 etc.  use final number to match with correct model name
+ row.names(loos) <- mod_summv$model_code[match(as.numeric(gsub("model","",row.names(loos))),
+                                          1:dim(mod_summv)[1])]
+ # Initial assessment of effect of filter predictor below
+ # (Selection of optimal model made after removal of models with filter below)
+ loo_sum$frp_with_filter <- loos
+
+ mod_summv <- mod_summ[mod_summ$var == "tp",]
+ looic_tp <- list()
+  for(i in 1:dim(mod_summv)[1]){
+    assign("modvi", get(load(paste0(mod_dir,"/",mod_summv$file_name[i]))))
+    cat(mod_summv$model_code[i])
+    check_hmc_diagnostics(modvi)
+    looic_tp[[i]] <- loo(modvi)
+    rm(modvi)
+    gc()
+  }
+ loos <- as.data.frame(loo::loo_compare(looic_tp))
+ stacking_wts <- loo::loo_model_weights(looic_tp)
+ loos$stacking_wt <- round(stacking_wts[match(row.names(loos),names(stacking_wts))],2)
+ pseudobma_wts <- loo::loo_model_weights(looic_tp, method = "pseudobma")
+ loos$pseudobma_wt <- round(pseudobma_wts[match(row.names(loos),names(pseudobma_wts))],2)
+ #looic by default names models model1, model2 etc.  use final number to match with correct model name
+ row.names(loos) <- mod_summv$model_code[match(as.numeric(gsub("model","",row.names(loos))),
+                                          1:dim(mod_summv)[1])]
+ loo_sum$tp <- loos
+ # loo_sum$tp
+ # m_1_s_st is the best model (stacking weight 0.83, m_1_st 0.16)
+ mod_summ$optimal_model[mod_summ$var == "tp" & mod_summ$model_code == 
+                          row.names(loos)[loos$looic == min(loos$looic)]] <- 1
+rm(stacking_wts,pseudobma_wts,loos); gc()
+
+ mod_summv <- mod_summ[mod_summ$var == "nh3",]
+ looic_nh3 <- list()
+  for(i in 1:dim(mod_summv)[1]){
+    assign("modvi", get(load(paste0(mod_dir,"/",mod_summv$file_name[i]))))
+    cat(mod_summv$model_code[i])
+    check_hmc_diagnostics(modvi)
+    looic_nh3[[i]] <- loo(modvi)
+    rm(modvi)
+    gc()
+  }
+ loos <- as.data.frame(loo::loo_compare(looic_nh3))
+ stacking_wts <- loo::loo_model_weights(looic_nh3)
+ loos$stacking_wt <- round(stacking_wts[match(row.names(loos),names(stacking_wts))],2)
+ pseudobma_wts <- loo::loo_model_weights(looic_nh3, method = "pseudobma")
+ loos$pseudobma_wt <- round(pseudobma_wts[match(row.names(loos),names(pseudobma_wts))],2)
+ #looic by default names models model1, model2 etc.  use final number to match with correct model name
+ row.names(loos) <- mod_summv$model_code[match(as.numeric(gsub("model","",row.names(loos))),
+                                          1:dim(mod_summv)[1])]
+ # Initial assessment of effect of filter predictor below
+ # (Selection of optimal model made after removal of models with filter below)
+ loo_sum$nh3_with_filter <- loos
+rm(stacking_wts,pseudobma_wts,loos); gc()
+
+ mod_summv <- mod_summ[mod_summ$var == "tn",]
+ looic_tn <- list()
+ # Check model diagnostics for each candidate model
+  for(i in 1:dim(mod_summv)[1]){
+    assign("modvi", get(load(paste0(mod_dir,"/",mod_summv$file_name[i]))))
+    cat(mod_summv$model_code[i])
+    check_hmc_diagnostics(modvi)
+    looic_tn[[i]] <- loo(modvi)
+    rm(modvi)
+    gc()
+  }
+ loos <- as.data.frame(loo::loo_compare(looic_tn))
+ stacking_wts <- loo::loo_model_weights(looic_tn)
+ loos$stacking_wt <- round(stacking_wts[match(row.names(loos),names(stacking_wts))],2)
+ pseudobma_wts <- loo::loo_model_weights(looic_tn, method = "pseudobma")
+ loos$pseudobma_wt <- round(pseudobma_wts[match(row.names(loos),names(pseudobma_wts))],2)
+ #looic by default names models model1, model2 etc.  use final number to match with correct model name
+ row.names(loos) <- mod_summv$model_code[match(as.numeric(gsub("model","",row.names(loos))),
+                                          1:dim(mod_summv)[1])]
+ loo_sum$tn <- loos
+ # loo_sum$tn
+ # m_1ft_esr_int_st the best (by looIC and pseudobma_wt, 0.91: 
+ #    stacking weight spread across csr, e, er, and esr)
+ mod_summ$optimal_model[mod_summ$var == "tn" & mod_summ$model_code == 
+                          row.names(loos)[loos$looic == min(loos$looic)]] <- 1
+ rm(stacking_wts,pseudobma_wts,loos); gc()
+
+ mod_summv <- mod_summ[mod_summ$var == "nox",]
+ looic_nox <- list()
+ # Check model diagnostics for each candidate model
+  for(i in 1:dim(mod_summv)[1]){
+    assign("modvi", get(load(paste0(mod_dir,"/",mod_summv$file_name[i]))))
+    cat(mod_summv$model_code[i])
+    check_hmc_diagnostics(modvi)
+    looic_nox[[i]] <- loo(modvi)
+    if(i == 1){
+       lpd_point <- looic_nox[[i]]$pointwise[, "elpd_loo"]
+    }else{
+       lpd_point <- cbind(lpd_point,
+                          looic_nox[[i]]$pointwise[, "elpd_loo"])
+}
+    rm(modvi)
+    gc()
+  }
+ loos <- as.data.frame(loo::loo_compare(looic_nox))
+ stacking_wts <- loo::loo_model_weights(looic_nox)
+ loos$stacking_wt <- round(stacking_wts[match(row.names(loos),names(stacking_wts))],2)
+ pseudobma_wts <- loo::loo_model_weights(looic_nox, method = "pseudobma")
+ loos$pseudobma_wt <- round(pseudobma_wts[match(row.names(loos),names(pseudobma_wts))],2)
+ row.names(loos) <- mod_summv$model_code[match(as.numeric(gsub("model","",row.names(loos))),
+                                          1:dim(mod_summv)[1])]
+ # Initial assessment of effect of filter predictor below
+ # (Selection of optimal model made after removal of models with filter below)
+ loo_sum$nox_with_filter <- loos
+
+ mod_summv <- mod_summ[mod_summ$var == "tss",]
+ looic_tss <- list()
+ # Check model diagnostics for each candidate model
+  for(i in 1:dim(mod_summv)[1]){
+    assign("modvi", get(load(paste0(mod_dir,"/",mod_summv$file_name[i]))))
+    cat(mod_summv$model_code[i])
+    check_hmc_diagnostics(modvi)
+    looic_tss[[i]] <- loo(modvi)
+    rm(modvi)
+    gc()
+  }
+ loos <- as.data.frame(loo::loo_compare(looic_tss))
+ stacking_wts <- loo::loo_model_weights(looic_tss)
+ loos$stacking_wt <- round(stacking_wts[match(row.names(loos),names(stacking_wts))],2)
+ pseudobma_wts <- loo::loo_model_weights(looic_tss, method = "pseudobma")
+ loos$pseudobma_wt <- round(pseudobma_wts[match(row.names(loos),names(pseudobma_wts))],2)
+ #looic by default names models model1, model2 etc.  use final number to match with correct model name
+ row.names(loos) <- mod_summv$model_code[match(as.numeric(gsub("model","",row.names(loos))),
+                                          1:dim(mod_summv)[1])]
+ loo_sum$tss <- loos
+ # loo_sum$tss
+ # m_1_s_st is the best (stacking wt 0.87, followed by m_1_st 0.1)
+ mod_summ$optimal_model[mod_summ$var == "tss" & mod_summ$model_code == 
+                          row.names(loos)[loos$looic == min(loos$looic)]] <- 1
+rm(stacking_wts,pseudobma_wts,loos); gc()
+ 
+ mod_summv <- mod_summ[mod_summ$var == "ec",]
+ looic_ec <- list()
+ # Check model diagnostics for each candidate model
+  for(i in 1:dim(mod_summv)[1]){
+    assign("modvi", get(load(paste0(mod_dir,"/",mod_summv$file_name[i]))))
+    cat(mod_summv$model_code[i])
+    check_hmc_diagnostics(modvi)
+    looic_ec[[i]] <- loo(modvi)
+    rm(modvi)
+    gc()
+  }
+ loos <- as.data.frame(loo::loo_compare(looic_ec))
+ stacking_wts <- loo::loo_model_weights(looic_ec)
+ loos$stacking_wt <- round(stacking_wts[match(row.names(loos),names(stacking_wts))],2)
+ pseudobma_wts <- loo::loo_model_weights(looic_ec, method = "pseudobma")
+ loos$pseudobma_wt <- round(pseudobma_wts[match(row.names(loos),names(pseudobma_wts))],2)
+ #looic by default names models model1, model2 etc.  use final number to match with correct model name
+ row.names(loos) <- mod_summv$model_code[match(as.numeric(gsub("model","",row.names(loos))),
+                                          1:dim(mod_summv)[1])]
+ loo_sum$ec <- loos
+ #loo_sum$ec
+ # m_1_st is the best model (stacking weight 1)
+mod_summ$optimal_model[mod_summ$var == "ec" & mod_summ$model_code == 
+                         row.names(loos)[loos$looic == min(loos$looic)]] <- 1
+rm(stacking_wts,pseudobma_wts,loos); gc()
+ 
+ mod_summv <- mod_summ[mod_summ$var == "tem",]
+ looic_tem <- list()
+ # Check model diagnostics for each candidate model
+  for(i in 1:dim(mod_summv)[1]){
+    assign("modvi", get(load(paste0(mod_dir,"/",mod_summv$file_name[i]))))
+    cat(mod_summv$model_code[i])
+    check_hmc_diagnostics(modvi)
+    looic_tem[[i]] <- loo(modvi)
+    rm(modvi)
+    gc()
+  }
+ loos <- as.data.frame(loo::loo_compare(looic_tem))
+ stacking_wts <- loo::loo_model_weights(looic_tem)
+ loos$stacking_wt <- round(stacking_wts[match(row.names(loos),names(stacking_wts))],2)
+ pseudobma_wts <- loo::loo_model_weights(looic_tem, method = "pseudobma")
+ loos$pseudobma_wt <- round(pseudobma_wts[match(row.names(loos),names(pseudobma_wts))],2)
+ #looic by default names models model1, model2 etc.  use final number to match with correct model name
+ row.names(loos) <- mod_summv$model_code[match(as.numeric(gsub("model","",row.names(loos))),
+                                          1:dim(mod_summv)[1])]
+ loo_sum$tem <- loos
+ #loo_sum$tem
+ # m_1_sdr__int_st the best model (stacking wt 0.87)
+mod_summ$optimal_model[mod_summ$var == "tem" & mod_summ$model_code == 
+                         row.names(loos)[loos$looic == min(loos$looic)]] <- 1
+rm(stacking_wts,pseudobma_wts,loos); gc()
+```
+
+### Effect of filter type on FRP, NH~4~^+^, and NO~x~
+
+`wq_methods_C_model_sampling.Rmd` sampled all model structures for FRP, NH~4~^+^, and NO~x~ with and without the binary filter variable.  
+
+```{r, fig.width = 6.5, fig.height = 8.5}
+# loo_sum$frp_with_filter
+# # m_1_csrf_st is the best model with filter
+# m_frp_no_f <- get(load(paste0(mod_dir,"/","fit_frp_m_1_csr_st.rda")))
+# m_frp_f <- get(load(paste0(mod_dir,"/","fit_frp_m_1_csrf_st.rda")))
+# m_frp_no_f_coeffs <- as.data.frame(summary(m_frp_no_f, pars = c("b_d","b_r","b_p","b_dp","b_rp","t_mu"),  #"b_t",
+#                                            probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
+# m_frp_f_coeffs <- as.data.frame(summary(m_frp_f, pars = c("b_d","b_r","b_p","b_dp","b_rp","b_add4","t_mu"),  #"b_t",
+#                                            probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
+# 
+# # loo_sum$nh3_with_filter  
+# m_1_srf_st is the best model with filter
+# m_nh3_no_f <- get(load(paste0(mod_dir,"/","fit_nh3_m_1_sr_st.rda")))
+# m_nh3_f <- get(load(paste0(mod_dir,"/","fit_nh3_m_1_srf_st.rda")))
+# m_nh3_no_f_coeffs <- as.data.frame(summary(m_nh3_no_f, pars = c("b_d","b_r","b_p","b_dp","b_rp","t_mu"),  #"b_t",
+#                                            probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
+# m_nh3_f_coeffs <- as.data.frame(summary(m_nh3_f, pars = c("b_d","b_r","b_p","b_dp","b_rp","b_add3","t_mu"),  #"b_t",
+#                                            probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
+# 
+# # loo_sum$nox_with_filter  
+# m_1_esrf_int_st is the best model with filter.
+# m_nox_no_f <- get(load(paste0(mod_dir,"/","fit_nox_m_1ft_esr_int_st.rda")))
+# m_nox_f <- get(load(paste0(mod_dir,"/","fit_nox_m_1ft_esrf_int_st.rda")))
+# m_nox_no_f_coeffs <- as.data.frame(summary(m_nox_no_f, pars = c("b_d","b_r","b_p","b_dp","b_rp","b_add1","b_add1p","b_t"),
+#                                            probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
+# m_nox_f_coeffs <- as.data.frame(summary(m_nox_f, pars = c("b_d","b_r","b_p","b_dp","b_rp","b_add1","b_add1p","b_add4","b_t"),
+#                                            probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
+# ft_posteriors <- data.frame(frp_f = rstan::extract(m_frp_f, pars = "b_add4")[[1]],
+#                             frp_t_mu = rstan::extract(m_frp_f, pars = "t_mu")[[1]],
+#                             nh3_f = rstan::extract(m_nh3_f, pars = "b_add3")[[1]],
+#                             nh3_t_mu = rstan::extract(m_nh3_f, pars = "t_mu")[[1]],
+#                             nox_f = rstan::extract(m_nox_f, pars = "b_add4")[[1]],
+#                             nox_t = rstan::extract(m_nox_f, pars = "b_t")[[1]])
+# save(m_frp_f_coeffs,m_frp_no_f_coeffs,m_nh3_f_coeffs,m_nh3_no_f_coeffs,
+#      m_nox_f_coeffs,m_nox_no_f_coeffs, ft_posteriors, file = "data/figS1-2_data.rda")
+
+load("data/figS1-2_data.rda")
+
+par(mfrow = c(3,2))
+#coef_plot_f - a function in code/misc_functions.R
+coef_plot_f(m_frp_f_coeffs,m_frp_no_f_coeffs,
+            parameters = c("b_d","b_r","b_p","b_dp","b_rp","t_mu","b_add4"), 
+            labels = c("degrd","restr","rain1","degrd:rain1",
+                                 "restr:rain1","time (mean)","filter"))
+title(main = "FRP  A.", adj = 0)
+plot(ft_posteriors$frp_f,ft_posteriors$frp_t_mu, pch = 16,
+     col = scales::alpha('blue',0.25),
+     xlab = "b_f", ylab = "t_mu", las = 1)
+title(main = "B.", adj = 0)
+
+coef_plot_f(m_nh3_f_coeffs,m_nh3_no_f_coeffs,
+             parameters = c("b_d","b_r","b_p","b_dp","b_rp","t_mu","b_add3"), 
+                      labels = c("degrd","restr","rain1","degrd:rain1",
+                                 "restr:rain1","time (mean)","filter"))
+title(main = "NH4+  C.", adj = 0)
+plot(ft_posteriors$nh3_f,ft_posteriors$nh3_t_mu, pch = 16,
+     col = scales::alpha('blue',0.25),
+     xlab = "b_f", ylab = "t_mu", las = 1)
+title(main = "D.", adj = 0)
+
+coef_plot_f(m_nox_f_coeffs,m_nox_no_f_coeffs)
+title(main = "NOx  E.", adj = 0)
+plot(ft_posteriors$nox_f,ft_posteriors$nox_t, pch = 16,
+     col = scales::alpha('blue',0.25),
+     xlab = "b_f", ylab = "b_t", las = 1)
+title(main = "F.", adj = 0)
+```
+
+#### Fig. 1. Coefficients (mean, 95% (thin lines) and 80% (thick lines) confidence interval) of the main experimental effects for A. FRP, C. NH~4~^+^, and D. NO~x~, for the best-fit model structure, with (blue) and without (red) a filter variable.  The filter coefficient was near zero for FRP and NH~4~^+^, and in both cases the effects of time and filter were not correlated.  In contrast, the collinear effects of time and filter (F) resulted in a negative filter effect (the opposite of what would be expected mechanistically), and the time effect shifting from near zero to positive when filter was included in the model (E). For all three variables the inclusion of a filter variable had no consequential effect on estimates of other effects (A, C, E). 
+
+For FRP and NH~4~^+^, models with the primary predictors (eq. 2 main paper) and additional predictor *season* or *rain365* alone or in combination with *filter* and *channel* were equally the most plausible.  For NO~x~, the model with *septic*, *season*, *rain365*, and *filter* was most plausible, but only marginally more plausible than the same model without *filter*.  The effect sizes of the primary predictors were similar among these most plausible models. Fig. 1 shows coefficient estimates of the best-fit models for FRP, NH~4~^+^ and D. NO~x~, with a filter effect, and the same model structure without the filter effect. For FRP and NH~4~^+^, models with a filter effect were equally plausible as equivalent models without a filter effect (as assessed by looIC).  Models of NO~x~ with a filter effect were marginally better fits than models without a filter effect, but inclusion of filter introduced multicollinearity into the model (Fig. 1F: see data/loo_sum.xlsx for comparisons of all candidate models with and without *filter*).
+
+The effect of using filters of larger pore size after 2003 was near zero for FRP (mean 0.03, 95% confidence intervals -0.01, 0.07, Fig. 1A) and NH~4~^+^ (mean -0.02, 95% CIs -0.05, 0.05, Fig. 1C).  Despite the raw correlation between time and filter effects (R = 0.68, Fig. S1-1), they were uncorrelated conditional on other predictors in the models (Fig. 1B, D).  In contrast, the time and filter effects were collinear in the NO~x~ model (Fig. 1F), resulting in a negative filter coefficient and a positive time effect, compared to a near zero time effect in the equivalent model without a filter effect.  If filters of larger pore size were to have an effect, it would be expected to increase concentrations: a positive effect.  Because of the multicollinearity of these variables in the NO~x~ model, the filter coefficient cannot be considered a reliable indicator of effect.  
+
+We thus elected to not include a filter effect in candidate models because a) the reliable estimates of filter effect for FRP and NH~4~^+^ suggest a near-zero effect, and b) the inclusion or exclusion of a filter effect did not improve the fit of the models as assessed by looIC or change the estimates of other effects in the models (Fig. 1A, B, C).
+
+### Model selection
+
+```{r eval = FALSE}
+ mod_summv <- mod_summ[mod_summ$var == "frp" & is.na(mod_summ$filter),]
+ looic_frp <- list()
+ # Check model diagnostics for each candidate model
+  for(i in 1:dim(mod_summv)[1]){
+    assign("modvi", get(load(paste0(mod_dir,"/",mod_summv$file_name[i]))))
+    cat(mod_summv$model_code[i])
+    check_hmc_diagnostics(modvi)
+    looic_frp[[i]] <- loo(modvi)
+    rm(modvi)
+    gc()
+  }
+ loos <- as.data.frame(loo::loo_compare(looic_frp))
+ # see https://mc-stan.org/loo/articles/loo2-weights.html
+ stacking_wts <- loo::loo_model_weights(looic_frp)
+ loos$stacking_wt <- round(stacking_wts[match(row.names(loos),names(stacking_wts))],2)
+ pseudobma_wts <- loo::loo_model_weights(looic_frp, method = "pseudobma")
+ loos$pseudobma_wt <- round(pseudobma_wts[match(row.names(loos),names(pseudobma_wts))],2)
+ row.names(loos) <- mod_summv$model_code[match(as.numeric(gsub("model","",row.names(loos))),
+                                          1:dim(mod_summv)[1])]
+ loo_sum$frp <- loos
+ # loo_sum$frp
+ # m_1_cs_st the best 
+ mod_summ$optimal_model[mod_summ$var == "frp" & mod_summ$model_code == 
+                          row.names(loos)[loos$looic == min(loos$looic)]] <- 1
+rm(stacking_wts,pseudobma_wts,loos); gc()
+
+ mod_summv <- mod_summ[mod_summ$var == "nh3" & is.na(mod_summ$filter),]
+ looic_nh3 <- list()
+ # Check model diagnostics for each candidate model
+  for(i in 1:dim(mod_summv)[1]){
+    assign("modvi", get(load(paste0(mod_dir,"/",mod_summv$file_name[i]))))
+    cat(mod_summv$model_code[i])
+    check_hmc_diagnostics(modvi)
+    looic_nh3[[i]] <- loo(modvi)
+    rm(modvi)
+    gc()
+  }
+ loos <- as.data.frame(loo::loo_compare(looic_nh3))
+ stacking_wts <- loo::loo_model_weights(looic_nh3)
+ loos$stacking_wt <- round(stacking_wts[match(row.names(loos),names(stacking_wts))],2)
+ pseudobma_wts <- loo::loo_model_weights(looic_nh3, method = "pseudobma")
+ loos$pseudobma_wt <- round(pseudobma_wts[match(row.names(loos),names(pseudobma_wts))],2)
+ row.names(loos) <- mod_summv$model_code[match(as.numeric(gsub("model","",row.names(loos))),
+                                          1:dim(mod_summv)[1])]
+ loo_sum$nh3 <- loos
+ # loo_sum$nh3
+ # # m_1_sr_st the best, stacking weight 0.76
+ mod_summ$optimal_model[mod_summ$var == "nh3" & mod_summ$model_code == 
+                          row.names(loos)[loos$looic == min(loos$looic)]] <- 1
+rm(stacking_wts,pseudobma_wts,loos); gc()
+
+ mod_summv <- mod_summ[mod_summ$var == "nox" & is.na(mod_summ$filter),]
+ looic_nox <- list()
+ # Check model diagnostics for each candidate model
+  for(i in 1:dim(mod_summv)[1]){
+    assign("modvi", get(load(paste0(mod_dir,"/",mod_summv$file_name[i]))))
+    cat(mod_summv$model_code[i])
+    check_hmc_diagnostics(modvi)
+    looic_nox[[i]] <- loo(modvi)
+    if(i == 1){
+       lpd_point <- looic_nox[[i]]$pointwise[, "elpd_loo"]
+    }else{
+       lpd_point <- cbind(lpd_point,
+                          looic_nox[[i]]$pointwise[, "elpd_loo"])
+}
+    rm(modvi)
+    gc()
+  }
+ loos <- as.data.frame(loo::loo_compare(looic_nox))
+ stacking_wts <- loo::loo_model_weights(looic_nox)
+ loos$stacking_wt <- round(stacking_wts[match(row.names(loos),names(stacking_wts))],2)
+ pseudobma_wts <- loo::loo_model_weights(looic_nox, method = "pseudobma")
+ loos$pseudobma_wt <- round(pseudobma_wts[match(row.names(loos),names(pseudobma_wts))],2)
+ row.names(loos) <- mod_summv$model_code[match(as.numeric(gsub("model","",row.names(loos))),
+                                          1:dim(mod_summv)[1])]
+ loo_sum$nox <- loos
+ # loo_sum$nh3
+ # # m_1_sr_st the best 
+mod_summ$optimal_model[mod_summ$var == "nox" & mod_summ$model_code == 
+                          row.names(loos)[loos$looic == min(loos$looic)]] <- 1
+rm(stacking_wts,pseudobma_wts,loos); gc()
+
+WriteXLS::WriteXLS(loo_sum, "data/loo_sum.xlsx", row.names = TRUE)
+write.csv(mod_summ, "data/mod_summ.csv", row.names = FALSE)
+```
+
+The following chunk extracts and saves the relevant statistics of posterior distributions for plotting Figs. S1-3 to S1-11 in Appendix S1, and Fig. 2 in the paper.  
+
+```{r include = FALSE, eval = FALSE}
+mod_summ <- read.csv("data/mod_summ.csv")
+# FRP
+modsum_var <- mod_summ[mod_summ$var == "frp" & mod_summ$optimal_model == 1,] #m_1_cs_st
+mod <- get(load(paste0(mod_dir,"/", modsum_var$file_name)))
+wq_data$site_no <- factor(wq_data$site_no,levels = 1:11)
+d <- wq_data
+d$y <- wq_data[ys[vars == "frp"]][,1]
+d <- d[!is.na(d$y),] 
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+d$y <- 1.5 * d$y / max(d$y)
+y_pred <- as.data.frame(mod, include = TRUE, pars = 'mu')
+d$y_pred_mean <- apply(y_pred, 2, mean)
+pars = c("b_d","b_r","b_dp","b_rp","b_add1","b_add2","t_mu","b_auto_t","b_auto_s","a_s","b_t")
+labs = c("degrd","restr","degrd:rain1","restr:rain1","channel","season",
+         "time (mean)","autoT","autoS",rep(sites$cat[order(sites$site_no)], 2))
+mod_coeffs <- as.data.frame(summary(mod, pars = pars, probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
+coeffs_8vars <- data.frame(var = "frp", par = row.names(mod_coeffs), 
+                           lab = labs, mod_coeffs)
+frp_oe <- d[c("y","y_pred_mean")]
+
+# TP
+modsum_var <- mod_summ[mod_summ$var == "tp" & mod_summ$optimal_model == 1,] # m_1_s_st 
+mod <- get(load(paste0(mod_dir,"/", modsum_var$file_name)))
+d <- wq_data
+d$y <- wq_data[ys[vars == "tp"]][,1]
+d <- d[!is.na(d$y),] 
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+d$y <- 1.5 * d$y / max(d$y)
+d$site_no <- factor(d$site_no,levels = 1:11)
+y_pred <- as.data.frame(mod, include = TRUE, pars = 'mu')
+d$y_pred_mean <- apply(y_pred, 2, mean)
+pars = c("b_d","b_r","b_dp","b_rp","b_add1","t_mu","b_auto_t","b_auto_s","a_s","b_t")
+labs = c("degrd","restr","degrd:rain1","restr:rain1","season","time (mean)",
+         "autoT","autoS",rep(sites$cat[order(sites$site_no)], 2))
+mod_coeffs <- as.data.frame(summary(mod, pars = pars, probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
+coeffs_8vars <- rbind(coeffs_8vars, 
+                      data.frame(var = "tp", par = row.names(mod_coeffs), 
+                                 lab = labs, mod_coeffs))
+tp_oe <-  d[c("y","y_pred_mean")]
+
+# TN
+modsum_var <- mod_summ[mod_summ$var == "tn" & mod_summ$optimal_model == 1,] #m_1ft_esr_int_st
+mod <- get(load(paste0(mod_dir,"/", modsum_var$file_name)))
+d <- wq_data
+d$y <- wq_data[ys[vars == "tn"]][,1]
+d <- d[!is.na(d$y),] 
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+d$y <- 1.5 * d$y / max(d$y)
+d$site_no <- factor(d$site_no,levels = 1:11)
+y_pred <- as.data.frame(mod, include = TRUE, pars = 'mu')
+d$y_pred_mean <- apply(y_pred, 2, mean)
+pars = c("b_d","b_r","b_dp","b_rp","b_add1","b_add1p","b_add2","b_add3","b_t",
+         "b_auto_t","b_auto_s","a_s")
+labs = c("degrd","restr","degrd:rain1","restr:rain1","septic", "septic:rain1",
+         "season","rain365","time","autoT","autoS",sites$cat[order(sites$site_no)])
+mod_coeffs <- as.data.frame(summary(mod, pars = pars, probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
+coeffs_8vars <- rbind(coeffs_8vars, 
+                      data.frame(var = "tn", par = row.names(mod_coeffs), 
+                                 lab = labs, mod_coeffs))
+tn_oe <-  d[c("y","y_pred_mean")]
+
+# NOx
+modsum_var <- mod_summ[mod_summ$var == "nox" & mod_summ$optimal_model == 1,] #m_1ft_esr_int_st
+mod <- get(load(paste0(mod_dir,"/", modsum_var$file_name)))
+d <- wq_data
+d$y <- wq_data[ys[vars == "nox"]][,1]
+d <- d[!is.na(d$y),] 
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+d$y <- 1.5 * d$y / max(d$y)
+d$site_no <- factor(d$site_no,levels = 1:11)
+y_pred <- as.data.frame(mod, include = TRUE, pars = 'mu')
+d$y_pred_mean <- apply(y_pred, 2, mean)
+pars = c("b_d","b_r","b_dp","b_rp","b_add1","b_add1p","b_add2","b_add3","b_t",
+         "b_auto_t","b_auto_s","a_s","b_t")
+labs = c("degrd","restr","degrd:rain1","restr:rain1","septic", "septic:rain1",
+         "season","rain365","time","autoT","autoS",sites$cat[order(sites$site_no)])
+mod_coeffs <- as.data.frame(summary(mod, pars = pars, probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
+coeffs_8vars <- rbind(coeffs_8vars, 
+                      data.frame(var = "nox", par = row.names(mod_coeffs), 
+                                 lab = labs, mod_coeffs))
+nox_oe <-  d[c("y","y_pred_mean")]
+
+modsum_var <- mod_summ[mod_summ$var == "nh3" & mod_summ$optimal_model == 1,] #m_1_sr_st
+mod <- get(load(paste0(mod_dir,"/", modsum_var$file_name)))
+d <- wq_data
+d$y <- wq_data[ys[vars == "nh3"]][,1]
+d <- d[!is.na(d$y),] 
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+d$y <- 1.5 * d$y / max(d$y)
+d$site_no <- factor(d$site_no,levels = 1:11)
+y_pred <- as.data.frame(mod, include = TRUE, pars = 'mu')
+d$y_pred_mean <- apply(y_pred, 2, mean)
+pars = c("b_d","b_r","b_dp","b_rp","b_add1","t_mu","b_auto_t","b_auto_s","a_s","b_t")
+labs =  c("degrd","restr","degrd:rain1","restr:rain1","rain365","time (mean)",
+          "autoT","autoS",rep(sites$cat[order(sites$site_no)], 2))
+mod_coeffs <- as.data.frame(summary(mod, pars = pars, probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
+coeffs_8vars <- rbind(coeffs_8vars, 
+                      data.frame(var = "nh3", par = row.names(mod_coeffs), 
+                                 lab = labs, mod_coeffs))
+nh3_oe <-  d[c("y","y_pred_mean")]
+
+modsum_var <- mod_summ[mod_summ$var == "tss" & mod_summ$optimal_model == 1,] # m_1_s_st 
+mod <- get(load(paste0(mod_dir,"/", modsum_var$file_name)))
+d <- wq_data
+d$y <- wq_data[ys[vars == "tss"]][,1]
+d <- d[!is.na(d$y),] 
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+d$y <- 1.5 * d$y / max(d$y)
+d$site_no <- factor(d$site_no,levels = 1:11)
+y_pred <- as.data.frame(mod, include = TRUE, pars = 'mu')
+d$y_pred_mean <- apply(y_pred, 2, mean)
+pars = c("b_d","b_r","b_dp","b_rp","b_add1","t_mu","b_auto_t","b_auto_s","a_s","b_t")
+labs =  c("degrd","restr","degrd:rain1","restr:rain1","season","time (mean)",
+          "autoT","autoS",rep(sites$cat[order(sites$site_no)], 2))
+mod_coeffs <- as.data.frame(summary(mod, pars = pars, probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
+coeffs_8vars <- rbind(coeffs_8vars, 
+                      data.frame(var = "tss", par = row.names(mod_coeffs), 
+                                 lab = labs, mod_coeffs))
+tss_oe <-  d[c("y","y_pred_mean")]
+
+modsum_var <- mod_summ[mod_summ$var == "ec" & mod_summ$optimal_model == 1,] # m_1_st
+mod <- get(load(paste0(mod_dir,"/", modsum_var$file_name)))
+d <- wq_data
+d$y <- wq_data[ys[vars == "ec"]][,1]
+d <- d[!is.na(d$y),] 
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+d$y <- 1.5 * d$y / max(d$y)
+d$site_no <- factor(d$site_no,levels = 1:11)
+y_pred <- as.data.frame(mod, include = TRUE, pars = 'mu')
+d$y_pred_mean <- apply(y_pred, 2, mean)
+pars = c("b_d","b_r","b_dp","b_rp","t_mu","b_auto_t","b_auto_s","a_s","b_t")
+labs <- c("degrd","restr","degrd:rain1","restr:rain1","time (mean)",
+          "autoT","autoS",rep(sites$cat[order(sites$site_no)], 2))
+mod_coeffs <- as.data.frame(summary(mod, pars = pars, probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
+coeffs_8vars <- rbind(coeffs_8vars, 
+                      data.frame(var = "ec", par = row.names(mod_coeffs), 
+                                 lab = labs, mod_coeffs))
+ec_oe <-  d[c("y","y_pred_mean")]
+
+modsum_var <- mod_summ[mod_summ$var == "tem" & mod_summ$optimal_model == 1,]
+mod <- get(load(paste0(mod_dir,"/", modsum_var$file_name)))
+d <- wq_data
+d$y <- wq_data[ys[vars == "tem"]][,1]
+d <- d[!is.na(d$y),]
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+d$y <- 1.5 * d$y / max(d$y)
+d$site_no <- factor(d$site_no,levels = 1:11)
+y_pred <- as.data.frame(mod, include = TRUE, pars = 'mu')
+d$y_pred_mean <- apply(y_pred, 2, mean)
+pars <- c("b_d","b_r","b_p","b_dp","b_rp","b_seas","b_diel","b_seas_r","b_seas_d",
+         "b_diel_r","b_diel_d","b_t","b_auto_t","b_auto_s","a_s") 
+labs <- c("degrd","restr","rain","degrd:rain1","restr:rain1",
+                               "season","diel","season:restr","season:degrd",
+                               "diel:restr","diel:degrd","time","autoT","autoS",sites$cat[order(sites$site_no)])
+mod_coeffs <- as.data.frame(summary(mod, pars = pars, probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
+mod_coeffs <- data.frame(var = "tem", par = row.names(mod_coeffs), lab = labs, mod_coeffs)
+coeffs_8vars <- rbind(coeffs_8vars, mod_coeffs)
+tem_oe <-  d[c("y","y_pred_mean")]
+
+oes <- list(frp = frp_oe, tp = tp_oe, tn = tn_oe, nox = nox_oe, nh3 = nh3_oe, 
+            tss = tss_oe, ec = ec_oe, tem = tem_oe)
+
+save(oes, file = "data/oe_list_8vars.rda", compress = "xz")
+write.csv(coeffs_8vars, "data/coeffs_8vars.csv", row.names = FALSE)
+```
+

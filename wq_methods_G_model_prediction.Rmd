@@ -1,0 +1,563 @@
+---
+title: "Dispersed urban-stormwater control improved stream water quality in a catchment-scale experiment"
+subtitle: "Supplementary methods G: predictions to new data"
+author:
+  - Christopher J Walsh, Sam J Imberger, Matthew J Burns, Darren G Bos, and Tim D Fletcher
+date: "School of Ecosystem and Forest Sciences, The University of Melbourne, 500 Yarra Boulevard, Burnley, 3121 Victoria, Australia"
+output:   
+  word_document:
+    reference_docx: officedown_template.docx
+csl: ecol-app.csl
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, 
+                      message = FALSE, error = FALSE)
+library(rstan); library(loo); library(magrittr)
+source("code/misc_functions.R")
+# Set the directory for reading the (large) model objects from: 
+# I used a directory on a network drive
+mod_dir <- "[Network Drive]/git-data/lsc_dbs_wq/" #
+```
+
+This document samples the optimal models selected in `wq_methods_D_model_selection.Rmd` to derive predictions for scenarios illustrated in @WalshEtAl_2022.
+
+```{r}
+sites <- data.frame(readxl::read_excel("data/wq_data_compiled.xlsx", 
+                                         sheet = "sites"))
+wq_data <- data.frame(readxl::read_excel("data/wq_data_compiled.xlsx", 
+                                         sheet = "wq_data"))
+new_X <- data.frame(readxl::read_excel("data/wq_data_compiled.xlsx", 
+                                         sheet = 4))
+#Apply an index to new_X for adding predictions.
+new_X$ind <- 1:nrow(new_X)
+wq_data$date_time <- lubridate::ymd_hms(wq_data$date_time)
+# centre and scale time
+wq_data$t <- as.numeric(wq_data$date_time)
+wq_data$t <- 3*(wq_data$t - (min(wq_data$t) + diff(range(wq_data$t))*0.5) )/ diff(range(wq_data$t))
+# set grouping variables as integers (as expected by Stan)
+wq_data$site_no <- as.integer(wq_data$site_no)
+wq_data$stream_no <- as.integer(wq_data$stream_no)
+wq_data$rain365 <- 3*(wq_data$rain365 - (min(wq_data$rain365) + 
+                                           diff(range(wq_data$rain365))*0.5) )/ diff(range(wq_data$rain365))
+wq_data$septic <- 3*(wq_data$septic - (min(wq_data$septic) + 
+                                           diff(range(wq_data$septic))*0.5) )/ diff(range(wq_data$septic))
+
+#Appropriate transformations for the eight variables
+wq_data$lFRP <- log10(wq_data$FRP)
+wq_data$lTP <- log10(wq_data$TP)
+wq_data$lNH3 <- log10(wq_data$NH3)
+wq_data$lTSS <- log10(wq_data$TSS)
+wq_data$sNOx <- wq_data$NOx^0.5
+wq_data$lTN <- log10(wq_data$TN)
+wq_data$sEC <- wq_data$EC^0.5
+wq_data$lTem <- log10(wq_data$Tem)
+
+sites$septic <- (sites$septics^0.5)/10
+sites$septic <- 3*(sites$septic - (min(sites$septic) + 
+                                           diff(range(sites$septic))*0.5) )/
+                               diff(range(sites$septic))
+#data frame matching ultimate EI (degrd) and maximum restr (and septic) achieved at the 6 experimental sites
+exp_sites <- data.frame(site = c("D8","D4","Ln","L4","Ls","L1"),
+                        restr_ind = c(5,6,2,4,3,7),
+                        max_restr = unique(new_X$restr)[c(5,6,2,4,3,7)],
+                        degrd_ind = c(4:8,10),
+                        degrd = unique(new_X$degrd)[c(4:8,10)],
+                        septic = sites$septic[match(c("D8","D4","Ln","L4","Ls","L1"),sites$cat)])
+
+ys <- c("lFRP","lTP","lNH3","lTSS","lTN","sNOx","sEC","lTem")
+vars <- c("frp","tp","nh3","tss","tn","nox","ec","tem")
+mod_summ <- read.csv("data/mod_summ.csv")
+#new_X tables compiled in wq_methods_F
+load("data/new_X_by_wqvar.rda")
+
+#Template for prediction comparisons
+comp_site <- data.frame(site = NA, x = c(1:4,6:9), 
+                        rain1 = rep(c(0,2,8,20),2), 
+                        rain1_p_ind = c(1,3,5,7),
+                        var = "tp", 
+                        comparison = rep(c("NvS","SvR"), each = 4),
+                        d050 = NA, d025 = NA, d975 = NA)
+```
+
+The following code chunk extracts predictions and parameters from the optimal model for each water quality variable.  For each variable, four tables are constructed for use in the manuscript:  
+
+- new_X_[varname] is a table of predictions to the new_X set of scenario data, used to plot Figs. 2 and 4.  Because the set of predictor variables differs among variables, a separate table was compiled for each variable, and the eight tables were saved as worksheets in "data/prediction_set.xlsx".  
+
+- statistics (50th, 95th, 90th percentile) for predictor coefficients were compiled into a single table, "coeffs_8vars.csv".  The models sampled for prediction to new data used unscaled response variables (cf models in wq_methods_C, which were scaled) to permit simpler calculation of predictions.  The coefficients for these models are thus saved as "data/coeffs_8vars_unscaled.csv", to distinguish them from the models sampled in wq_methods_D_model_selection.Rmd, which were scaled to permit plotting of coefficients on a comparable scale as in Fig. 2.  
+
+- the mean predicted value for each data point, together with the observed value were saved as a table [var]_oe for each variable, and the eight tables were saved as a list (i.e. an R object), "data/oe_list_8vars.rda".  
+
+- A table of differences between S, predicted values given achieved SCM implementation, N, predicted values assuming no SCM implementation, and R predicted values in the absence of stormwater (and septic) impacts, for each value at each of the six experimental sites, saved as "data/comparisons.csv"
+
+```{r fig.width = 5, fig.height = 5}
+# TP ----
+# mod_summ$model_code[mod_summ$wq_var == "TP" & mod_summ$optimal_model == 1] #m_1_s_st
+load(paste0(mod_dir, "model_fits/fit_tp_m_1_s_st_p.rda"))
+predset_list <- rstan::extract(fit_tp_m_1_s_st_p, pars = "y_pred")[[1]]
+  # back_transform and de-scale for plotting on log-domainn 
+  # (see scaling step for y in wq_methods_F, L 82)
+predset_list <- predset_list + min(wq_data[,"lTP"], na.rm = TRUE) + 
+    diff(range(wq_data[,"lTP"], na.rm = TRUE))*0.5
+new_X_tp <- new_X_by_wqvar$tp
+new_X_tp$ind <- 1:nrow(new_X_tp)
+new_X_tp$tp_mean <- apply(predset_list, 2, mean)
+new_X_tp$tp_025 <- apply(predset_list, 2, quantile, probs = 0.025)
+new_X_tp$tp_975 <- apply(predset_list, 2, quantile, probs = 0.975)
+d <- wq_data
+d$y <- wq_data$lTP
+d <- d[!is.na(d$y),] 
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+d$site_no <- factor(d$site_no,levels = 1:11)
+y_pred <- as.data.frame(fit_tp_m_1_s_st_p, include = TRUE, pars = 'mu')
+d$y_pred_mean <- apply(y_pred, 2, mean)
+pars = c("b_d","b_r","b_dp","b_rp","b_add1","t_mu","b_auto_t","b_auto_s","a_s","b_t")
+labs = c("degrd","restr","degrd:rain1","restr:rain1","season","time (mean)",
+         "autoT","autoS",rep(sites$cat[order(sites$site_no)], 2))
+mod_coeffs <- as.data.frame(summary(fit_tp_m_1_s_st_p, pars = pars, 
+                                    probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
+coeffs_8vars <- data.frame(var = "tp", par = row.names(mod_coeffs), 
+                           lab = labs, mod_coeffs)
+tp_oe <-  d[c("y","y_pred_mean")]
+
+# Model predictions illustrated in Figs. 2 and 4 (end of study, season = 0, channel = 0)
+new_Xi <- new_X_tp[new_X_tp$t == 1.5 & new_X_tp$season == 0,]
+predset_listi <- predset_list[,new_X_tp$t == 1.5 & new_X_tp$season == 0]
+for(s in 1:length(exp_sites$site)){
+  csi <- comp_site
+  csi$site <- exp_sites$site[s]
+  for(i in 1:4){
+    N <-  predset_listi[,new_Xi$restr == 0 & 
+                          round(new_Xi$degrd,5) == round(exp_sites$degrd[s],5) & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5)]
+    S <-  predset_listi[,new_Xi$restr == exp_sites$max_restr[s] & 
+                          new_Xi$degrd == exp_sites$degrd[s] & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5)]
+    R <-  predset_listi[,new_Xi$restr == 0 & 
+                          new_Xi$degrd == -1 & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5)]
+csi[i, c("d025","d050","d975")] <- unname(quantile(10^N - 10^S, probs = c(0.025,0.5,0.975)))
+csi[i + 4, c("d025","d050","d975")] <- unname(quantile(10^S - 10^R, probs = c(0.025,0.5,0.975)))
+  }
+  if(s == 1){
+    comparisons <- csi
+  }else{
+    comparisons <- rbind(comparisons, csi)
+  }
+}
+rm(fit_tp_m_1_s_st_p); gc()
+
+# FRP
+# mod_summ$model_code[mod_summ$wq_var == "FRP" & mod_summ$optimal_model == 1] #m_1_cs_st
+load(paste0(mod_dir, "model_fits/fit_frp_m_1_cs_st_p.rda"))
+predset_list <- rstan::extract(fit_frp_m_1_cs_st_p, pars = "y_pred")[[1]]
+  #back_transform and de-scale for plotting on log-domain
+  # (see scaling step for y in wq_methods_F, L 172)
+predset_list <- predset_list + min(wq_data[,"lFRP"], na.rm = TRUE) + 
+    diff(range(wq_data[,"lFRP"], na.rm = TRUE))*0.5
+new_X_frp <- new_X_by_wqvar$frp
+new_X_frp$ind <- 1:nrow(new_X_frp)
+new_X_frp$frp_mean <- apply(predset_list, 2, mean)
+new_X_frp$frp_025 <- apply(predset_list, 2, quantile, probs = 0.025)
+new_X_frp$frp_975 <- apply(predset_list, 2, quantile, probs = 0.975)
+d <- wq_data
+d$y <- wq_data$lFRP
+d <- d[!is.na(d$y),] 
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+d$site_no <- factor(d$site_no,levels = 1:11)
+y_pred <- as.data.frame(fit_frp_m_1_cs_st_p, include = TRUE, pars = 'mu')
+d$y_pred_mean <- apply(y_pred, 2, mean)
+pars = c("b_d","b_r","b_dp","b_rp","b_add1","b_add2","t_mu","b_auto_t","b_auto_s","a_s","b_t")
+labs = c("degrd","restr","degrd:rain1","restr:rain1","channel","season",
+         "time (mean)","autoT","autoS",rep(sites$cat[order(sites$site_no)], 2))
+mod_coeffs <- as.data.frame(summary(fit_frp_m_1_cs_st_p, pars = pars, 
+                                    probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
+coeffs_8vars <- rbind(coeffs_8vars,
+                      data.frame(var = "frp", par = row.names(mod_coeffs), 
+                                 lab = labs, mod_coeffs))
+frp_oe <-  d[c("y","y_pred_mean")]
+
+# Model predictions illustrated in Figs. 2 and 4 (end of study, season = 0, channel = 0)
+new_Xi <- new_X_frp[new_X_frp$t == 1.5 & 
+                      new_X_frp$season == 0 & new_X_frp$channel == 0,]
+predset_listi <- predset_list[,new_X_frp$t == 1.5 & 
+                                new_X_frp$season == 0 & new_X_frp$channel == 0]
+for(s in 1:length(exp_sites$site)){
+  csi <- comp_site
+  csi$site <- exp_sites$site[s]
+  csi$var <- "frp"
+  for(i in 1:4){
+    N <-  predset_listi[,new_Xi$restr == 0 & 
+                          round(new_Xi$degrd,5) == round(exp_sites$degrd[s],5) & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5)]
+    S <-  predset_listi[,new_Xi$restr == exp_sites$max_restr[s] & 
+                          new_Xi$degrd == exp_sites$degrd[s] & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5)]
+    R <-  predset_listi[,new_Xi$restr == 0 & 
+                          new_Xi$degrd == -1 & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5)]
+csi[i, c("d025","d050","d975")] <- unname(quantile(10^N - 10^S, probs = c(0.025,0.5,0.975)))
+csi[i + 4, c("d025","d050","d975")] <- unname(quantile(10^S - 10^R, probs = c(0.025,0.5,0.975)))
+  }
+    comparisons <- rbind(comparisons, csi)
+}
+rm(fit_frp_m_1_cs_st_p); gc()
+
+#NH3
+# mod_summ$model_code[mod_summ$wq_var == "NH3" & mod_summ$optimal_model == 1] #m_1_sr_st
+load(paste0(mod_dir, "model_fits/fit_nh3_m_1_sr_st_p.rda"))
+predset_list <- rstan::extract(fit_nh3_m_1_sr_st_p, pars = "y_pred")[[1]]
+  #back_transform and de-scale for plotting on log-domain
+  # (see scaling step for y in wq_methods_F, L 263)
+predset_list <- predset_list + min(wq_data[,"lNH3"], na.rm = TRUE) + 
+    diff(range(wq_data[,"lNH3"], na.rm = TRUE))*0.5
+new_X_nh3 <- new_X_by_wqvar$nh3
+new_X_nh3$ind <- 1:nrow(new_X_nh3)
+new_X_nh3$nh3_mean <- apply(predset_list, 2, mean)
+new_X_nh3$nh3_025 <- apply(predset_list, 2, quantile, probs = 0.025)
+new_X_nh3$nh3_975 <- apply(predset_list, 2, quantile, probs = 0.975)
+d <- wq_data
+d$y <- wq_data$lNH3
+d <- d[!is.na(d$y),] 
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+d$site_no <- factor(d$site_no,levels = 1:11)
+y_pred <- as.data.frame(fit_nh3_m_1_sr_st_p, include = TRUE, pars = 'mu')
+d$y_pred_mean <- apply(y_pred, 2, mean)
+pars = c("b_d","b_r","b_dp","b_rp","b_add1","t_mu","b_auto_t","b_auto_s","a_s","b_t")
+labs =  c("degrd","restr","degrd:rain1","restr:rain1","rain365","time (mean)",
+          "autoT","autoS",rep(sites$cat[order(sites$site_no)], 2))
+mod_coeffs <- as.data.frame(summary(fit_nh3_m_1_sr_st_p, pars = pars, 
+                                    probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
+coeffs_8vars <- rbind(coeffs_8vars,
+                      data.frame(var = "nh3", par = row.names(mod_coeffs), 
+                                 lab = labs, mod_coeffs))
+nh3_oe <-  d[c("y","y_pred_mean")]
+
+# Model predictions illustrated in Figs. 2 and 4 (end of study, season = 0, channel = 0)
+new_Xi <- new_X_nh3[new_X_nh3$t == 1.5 & 
+                      new_X_nh3$season == 0 & new_X_nh3$rain365 == 0,]
+predset_listi <- predset_list[,new_X_nh3$t == 1.5 & 
+                                new_X_nh3$season == 0 & new_X_nh3$rain365 == 0]
+for(s in 1:length(exp_sites$site)){
+  csi <- comp_site
+  csi$site <- exp_sites$site[s]
+  csi$var <- "nh3"
+  for(i in 1:4){
+    N <-  predset_listi[,new_Xi$restr == 0 & 
+                          round(new_Xi$degrd,5) == round(exp_sites$degrd[s],5) & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5)]
+    S <-  predset_listi[,new_Xi$restr == exp_sites$max_restr[s] & 
+                          new_Xi$degrd == exp_sites$degrd[s] & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5)]
+    R <-  predset_listi[,new_Xi$restr == 0 & 
+                          new_Xi$degrd == -1 & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5)]
+csi[i, c("d025","d050","d975")] <- unname(quantile(10^N - 10^S, probs = c(0.025,0.5,0.975)))
+csi[i + 4, c("d025","d050","d975")] <- unname(quantile(10^S - 10^R, probs = c(0.025,0.5,0.975)))
+  }
+    comparisons <- rbind(comparisons, csi)
+}
+rm(fit_nh3_m_1_sr_st_p); gc()
+
+#TSS
+# mod_summ$model_code[mod_summ$wq_var == "TSS" & mod_summ$optimal_model == 1] #m_1_s_st
+load(paste0(mod_dir, "model_fits/fit_tss_m_1_s_st_p.rda"))
+predset_list <- rstan::extract(fit_tss_m_1_s_st_p, pars = "y_pred")[[1]]
+  #back_transform and de-scale for plotting on log-domain
+  # (see scaling step for y in wq_methods_F, L 354)
+predset_list <- predset_list + min(wq_data[,"lTSS"], na.rm = TRUE) + 
+    diff(range(wq_data[,"lTSS"], na.rm = TRUE))*0.5
+new_X_tss <- new_X_by_wqvar$tss
+new_X_tss$ind <- 1:nrow(new_X_tss)
+new_X_tss$tss_mean <- apply(predset_list, 2, mean)
+new_X_tss$tss_025 <- apply(predset_list, 2, quantile, probs = 0.025)
+new_X_tss$tss_975 <- apply(predset_list, 2, quantile, probs = 0.975)
+d <- wq_data
+d$y <- wq_data$lTSS
+d <- d[!is.na(d$y),] 
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+d$site_no <- factor(d$site_no,levels = 1:11)
+y_pred <- as.data.frame(fit_tss_m_1_s_st_p, include = TRUE, pars = 'mu')
+d$y_pred_mean <- apply(y_pred, 2, mean)
+pars = c("b_d","b_r","b_dp","b_rp","b_add1","t_mu","b_auto_t","b_auto_s","a_s","b_t")
+labs =  c("degrd","restr","degrd:rain1","restr:rain1","season","time (mean)",
+          "autoT","autoS",rep(sites$cat[order(sites$site_no)], 2))
+mod_coeffs <- as.data.frame(summary(fit_tss_m_1_s_st_p, pars = pars, 
+                                    probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
+coeffs_8vars <- rbind(coeffs_8vars,
+                      data.frame(var = "tss", par = row.names(mod_coeffs), 
+                                 lab = labs, mod_coeffs))
+tss_oe <-  d[c("y","y_pred_mean")]
+
+# Model predictions illustrated in Figs. 2 and 4 (end of study, season = 0, channel = 0)
+new_Xi <- new_X_tss[new_X_tss$t == 1.5 & new_X_tss$season == 0,]
+predset_listi <- predset_list[,new_X_tss$t == 1.5 & new_X_tss$season == 0]
+for(s in 1:length(exp_sites$site)){
+  csi <- comp_site
+  csi$site <- exp_sites$site[s]
+  csi$var <- "tss"
+  for(i in 1:4){
+    N <-  predset_listi[,new_Xi$restr == 0 & 
+                          round(new_Xi$degrd,5) == round(exp_sites$degrd[s],5) & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5)]
+    S <-  predset_listi[,new_Xi$restr == exp_sites$max_restr[s] & 
+                          new_Xi$degrd == exp_sites$degrd[s] & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5)]
+    R <-  predset_listi[,new_Xi$restr == 0 & 
+                          new_Xi$degrd == -1 & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5)]
+csi[i, c("d025","d050","d975")] <- unname(quantile(10^N - 10^S, probs = c(0.025,0.5,0.975)))
+csi[i + 4, c("d025","d050","d975")] <- unname(quantile(10^S - 10^R, probs = c(0.025,0.5,0.975)))
+  }
+    comparisons <- rbind(comparisons, csi)
+}
+rm(fit_tss_m_1_s_st_p); gc()
+
+#ec
+# mod_summ$model_code[mod_summ$wq_var == "EC" & mod_summ$optimal_model == 1] #m_1_st
+load(paste0(mod_dir, "model_fits/fit_ec_m_1_st_p.rda"))
+predset_list <- rstan::extract(fit_ec_m_1_st_p, pars = "y_pred")[[1]]
+  #back_transform and de-scale for plotting on log-domain
+  # (see scaling step for y in wq_methods_F, L 536)
+predset_list <- predset_list + min(wq_data[,"sEC"], na.rm = TRUE) + 
+    diff(range(wq_data[,"sEC"], na.rm = TRUE))*0.5
+new_X_ec <- new_X_by_wqvar$ec
+new_X_ec$ind <- 1:nrow(new_X_ec)
+new_X_ec$ec_mean <- apply(predset_list, 2, mean)
+new_X_ec$ec_025 <- apply(predset_list, 2, quantile, probs = 0.025)
+new_X_ec$ec_975 <- apply(predset_list, 2, quantile, probs = 0.975)
+d <- wq_data
+d$y <- wq_data$sEC
+d <- d[!is.na(d$y),] 
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+d$site_no <- factor(d$site_no,levels = 1:11)
+y_pred <- as.data.frame(fit_ec_m_1_st_p, include = TRUE, pars = 'mu')
+d$y_pred_mean <- apply(y_pred, 2, mean)
+pars = c("b_d","b_r","b_dp","b_rp","t_mu","b_auto_t","b_auto_s","a_s","b_t")
+labs <- c("degrd","restr","degrd:rain1","restr:rain1","time (mean)",
+          "autoT","autoS",rep(sites$cat[order(sites$site_no)], 2))
+mod_coeffs <- as.data.frame(summary(fit_ec_m_1_st_p, pars = pars, 
+                                    probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
+coeffs_8vars <- rbind(coeffs_8vars,
+                      data.frame(var = "ec", par = row.names(mod_coeffs), 
+                                 lab = labs, mod_coeffs))
+ec_oe <-  d[c("y","y_pred_mean")]
+
+# Model predictions illustrated in Figs. 2 and 4 (end of study, season = 0, channel = 0)
+new_Xi <- new_X_ec[new_X_ec$t == 1.5,]
+predset_listi <- predset_list[,new_X_ec$t == 1.5]
+for(s in 1:length(exp_sites$site)){
+  csi <- comp_site
+  csi$site <- exp_sites$site[s]
+  csi$var <- "ec"
+  for(i in 1:4){
+    N <-  predset_listi[,new_Xi$restr == 0 & 
+                          round(new_Xi$degrd,5) == round(exp_sites$degrd[s],5) & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5)]
+    S <-  predset_listi[,new_Xi$restr == exp_sites$max_restr[s] & 
+                          new_Xi$degrd == exp_sites$degrd[s] & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5)]
+    R <-  predset_listi[,new_Xi$restr == 0 & 
+                          new_Xi$degrd == -1 & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5)]
+csi[i, c("d025","d050","d975")] <- unname(quantile(N^2 - S^2, probs = c(0.025,0.5,0.975)))
+csi[i + 4, c("d025","d050","d975")] <- unname(quantile(S^2 - R^2, probs = c(0.025,0.5,0.975)))
+  }
+    comparisons <- rbind(comparisons, csi)
+}
+rm(fit_ec_m_1_st_p); gc()
+
+#tem
+# mod_summ$model_code[mod_summ$wq_var == "tem" & mod_summ$optimal_model == 1] # m_3ft_sdr_int_st
+load(paste0(mod_dir, "model_fits/fit_tem_m_3ft_sdr_int_st_p.rda"))
+predset_list <- rstan::extract(fit_tem_m_3ft_sdr_int_st_p, pars = "y_pred")[[1]]
+  #back_transform and de-scale for plotting on log-domain
+  # (see scaling step for y in wq_methods_F, L 354)
+predset_list <- predset_list + min(wq_data[,"lTem"], na.rm = TRUE) + 
+    diff(range(wq_data[,"lTem"], na.rm = TRUE))*0.5
+new_X_tem <- new_X_by_wqvar$tem
+new_X_tem$ind <- 1:nrow(new_X_tem)
+new_X_tem$tem_mean <- apply(predset_list, 2, mean)
+new_X_tem$tem_025 <- apply(predset_list, 2, quantile, probs = 0.025)
+new_X_tem$tem_975 <- apply(predset_list, 2, quantile, probs = 0.975)
+d <- wq_data
+d$y <- wq_data$lTem
+d <- d[!is.na(d$y),] 
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+d$site_no <- factor(d$site_no,levels = 1:11)
+y_pred <- as.data.frame(fit_tem_m_3ft_sdr_int_st_p, include = TRUE, pars = 'mu')
+d$y_pred_mean <- apply(y_pred, 2, mean)
+pars <- c("b_d","b_r","b_p","b_dp","b_rp","b_seas","b_diel","b_seas_r","b_seas_d",
+         "b_diel_r","b_diel_d","b_t","b_auto_t","b_auto_s","a_s") 
+labs <- c("degrd","restr","rain","degrd:rain1","restr:rain1",
+                               "season","diel","season:restr","season:degrd",
+                               "diel:restr","diel:degrd","time","autoT","autoS",sites$cat[order(sites$site_no)])
+mod_coeffs <- as.data.frame(summary(fit_tem_m_3ft_sdr_int_st_p, pars = pars, 
+                                    probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
+coeffs_8vars <- rbind(coeffs_8vars,
+                      data.frame(var = "tem", par = row.names(mod_coeffs), 
+                                 lab = labs, mod_coeffs))
+tem_oe <-  d[c("y","y_pred_mean")]
+
+# Model predictions illustrated in Figs. 2 and 4 (end of study, season = 0, channel = 0)
+new_Xi <- new_X_tem[new_X_tem$t == 1.5 & new_X_tem$season == 1 &
+                                      new_X_tem$diel == 1 & new_X_tem$rain365 == 0,]
+predset_listi <- predset_list[,new_X_tem$t == 1.5 & new_X_tem$season == 1 &
+                                      new_X_tem$diel == 1 & new_X_tem$rain365 == 0]
+for(s in 1:length(exp_sites$site)){
+  csi <- comp_site
+  csi$site <- exp_sites$site[s]
+  csi$var <- "tem"
+  for(i in 1:4){
+    N <-  predset_listi[,new_Xi$restr == 0 & 
+                          round(new_Xi$degrd,5) == round(exp_sites$degrd[s],5) & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5)]
+    S <-  predset_listi[,new_Xi$restr == exp_sites$max_restr[s] & 
+                          new_Xi$degrd == exp_sites$degrd[s] & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5)]
+    R <-  predset_listi[,new_Xi$restr == 0 & 
+                          new_Xi$degrd == -1 & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5)]
+csi[i, c("d025","d050","d975")] <- unname(quantile(10^N - 10^S, probs = c(0.025,0.5,0.975)))
+csi[i + 4, c("d025","d050","d975")] <- unname(quantile(10^S - 10^R, probs = c(0.025,0.5,0.975)))
+  }
+    comparisons <- rbind(comparisons, csi)
+}
+rm(fit_tem_m_3ft_sdr_int_st_p); gc()
+
+# TN
+# mod_summ$model_code[mod_summ$wq_var == "TN" & mod_summ$optimal_model == 1] # m_1ft_esr_int_st
+load(paste0(mod_dir, "model_fits/fit_tn_m_1ft_esr_int_st_p.rda"))
+predset_list <- rstan::extract(fit_tn_m_1ft_esr_int_st_p, pars = "y_pred")[[1]]
+  #back_transform and de-scale for plotting on log-domain
+  # (see scaling step for y in wq_methods_F, L 737)
+predset_list <- predset_list + min(wq_data[,"lTN"], na.rm = TRUE) + 
+    diff(range(wq_data[,"lTN"], na.rm = TRUE))*0.5
+new_X_tn <- new_X_by_wqvar$tn
+new_X_tn$ind <- 1:nrow(new_X_tn)
+new_X_tn$tn_mean <- apply(predset_list, 2, mean)
+new_X_tn$tn_025 <- apply(predset_list, 2, quantile, probs = 0.025)
+new_X_tn$tn_975 <- apply(predset_list, 2, quantile, probs = 0.975)
+d <- wq_data
+d$y <- wq_data$lTN
+d <- d[!is.na(d$y),] 
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+d$y <- 1.5 * d$y / max(d$y)
+d$site_no <- factor(d$site_no,levels = 1:11)
+y_pred <- as.data.frame(fit_tn_m_1ft_esr_int_st_p, include = TRUE, pars = 'mu')
+d$y_pred_mean <- apply(y_pred, 2, mean)
+pars = c("b_d","b_r","b_dp","b_rp","b_add1","b_add1p","b_add2","b_add3","b_t",
+         "b_auto_t","b_auto_s","a_s")
+labs = c("degrd","restr","degrd:rain1","restr:rain1","septic", "septic:rain1",
+         "season","rain365","time","autoT","autoS",sites$cat[order(sites$site_no)])
+mod_coeffs <- as.data.frame(summary(fit_tn_m_1ft_esr_int_st_p, pars = pars, 
+                                    probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
+coeffs_8vars <- rbind(coeffs_8vars, 
+                      data.frame(var = "tn", par = row.names(mod_coeffs), 
+                                 lab = labs, mod_coeffs))
+tn_oe <-  d[c("y","y_pred_mean")]
+
+# Model predictions illustrated in Figs. 2 and 4 (end of study, season = 0, channel = 0)
+for(s in 1:length(exp_sites$site)){
+  csi <- comp_site
+  csi$site <- exp_sites$site[s]
+  csi$var <- "tn"
+new_Xi <- new_X_tn[new_X_tn$t == 1.5 & new_X_tn$season == 0 & 
+                                     new_X_tn$rain365 == 0,]
+predset_listi <- predset_list[,new_X_tn$t == 1.5 & new_X_tn$season == 0 & 
+                            new_X_tn$rain365 == 0]
+  for(i in 1:4){
+    N <-  predset_listi[,new_Xi$restr == 0 & 
+                          round(new_Xi$degrd,5) == round(exp_sites$degrd[s],5) & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5) & 
+                              round(new_Xi$septic,4) == round(exp_sites$septic[s],4)]
+    S <-  predset_listi[,new_Xi$restr == exp_sites$max_restr[s] & 
+                          new_Xi$degrd == exp_sites$degrd[s] & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5) & 
+                              round(new_Xi$septic,4) == round(exp_sites$septic[s],4)]
+    R <-  predset_listi[,new_Xi$restr == 0 & 
+                          new_Xi$degrd == -1 & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5)]
+csi[i, c("d025","d050","d975")] <- unname(quantile(10^N - 10^S, probs = c(0.025,0.5,0.975)))
+csi[i + 4, c("d025","d050","d975")] <- unname(quantile(10^S - 10^R, probs = c(0.025,0.5,0.975)))
+  }
+    comparisons <- rbind(comparisons, csi)
+}
+rm(fit_tn_m_1ft_esr_int_st_p); gc()
+
+#NOx
+# mod_summ$model_code[mod_summ$wq_var == "NOx" & mod_summ$optimal_model == 1] # m_1ft_esr_int_st
+load(paste0(mod_dir, "model_fits/fit_nox_m_1ft_esr_int_st_p.rda"))
+predset_list <- rstan::extract(fit_nox_m_1ft_esr_int_st_p, pars = "y_pred")[[1]]
+  #back_transform and de-scale for plotting on log-domain
+  # (see scaling step for y in wq_methods_F, L 737)
+predset_list <- predset_list + min(wq_data[,"sNOx"], na.rm = TRUE) + 
+    diff(range(wq_data[,"sNOx"], na.rm = TRUE))*0.5
+new_X_nox <- new_X_by_wqvar$nox
+new_X_nox$nox_mean <- apply(predset_list, 2, mean)
+new_X_nox$nox_025 <- apply(predset_list, 2, quantile, probs = 0.025)
+new_X_nox$nox_975 <- apply(predset_list, 2, quantile, probs = 0.975)
+d <- wq_data
+d$y <- wq_data$sNOx
+d <- d[!is.na(d$y),] 
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+d$y <- 1.5 * d$y / max(d$y)
+d$site_no <- factor(d$site_no,levels = 1:11)
+y_pred <- as.data.frame(fit_nox_m_1ft_esr_int_st_p, include = TRUE, pars = 'mu')
+d$y_pred_mean <- apply(y_pred, 2, mean)
+pars = c("b_d","b_r","b_dp","b_rp","b_add1","b_add1p","b_add2","b_add3","b_t",
+         "b_auto_t","b_auto_s","a_s","b_t")
+labs = c("degrd","restr","degrd:rain1","restr:rain1","septic", "septic:rain1",
+         "season","rain365","time","autoT","autoS",sites$cat[order(sites$site_no)])
+mod_coeffs <- as.data.frame(summary(fit_nox_m_1ft_esr_int_st_p, pars = pars, 
+                                    probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
+coeffs_8vars <- rbind(coeffs_8vars, 
+                      data.frame(var = "nox", par = row.names(mod_coeffs), 
+                                 lab = labs, mod_coeffs))
+nox_oe <-  d[c("y","y_pred_mean")]
+
+# Model predictions illustrated in Figs. 2 and 4 (end of study, season = 0, channel = 0)
+for(s in 1:length(exp_sites$site)){
+  csi <- comp_site
+  csi$site <- exp_sites$site[s]
+  csi$var <- "nox"
+new_Xi <- new_X_nox[new_X_nox$t == 1.5 & new_X_nox$season == 0 & 
+                                     new_X_nox$rain365 == 0,]
+predset_listi <- predset_list[,new_X_nox$t == 1.5 & new_X_nox$season == 0 & 
+                            new_X_nox$rain365 == 0]
+  for(i in 1:4){
+    N <-  predset_listi[,new_Xi$restr == 0 & 
+                          round(new_Xi$degrd,5) == round(exp_sites$degrd[s],5) & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5) & 
+                              round(new_Xi$septic,4) == round(exp_sites$septic[s],4)]
+    S <-  predset_listi[,new_Xi$restr == exp_sites$max_restr[s] & 
+                          new_Xi$degrd == exp_sites$degrd[s] & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5) & 
+                              round(new_Xi$septic,4) == round(exp_sites$septic[s],4)]
+    R <-  predset_listi[,new_Xi$restr == 0 & 
+                          new_Xi$degrd == -1 & 
+                             round(new_Xi$rain1,5) == round(log10(comp_site$rain1[i] + 1),5)]
+csi[i, c("d025","d050","d975")] <- unname(quantile(N^2 - S^2, probs = c(0.025,0.5,0.975)))
+csi[i + 4, c("d025","d050","d975")] <- unname(quantile(S^2 - R^2, probs = c(0.025,0.5,0.975)))
+  }
+    comparisons <- rbind(comparisons, csi)
+}
+rm(fit_nox_m_1ft_esr_int_st_p); gc()
+
+oes <- list(frp = frp_oe, tp = tp_oe, tn = tn_oe, nox = nox_oe, nh3 = nh3_oe, 
+            tss = tss_oe, ec = ec_oe, tem = tem_oe)
+
+save(oes, file = "data/oe_list_8vars.rda", compress = "xz")
+write.csv(coeffs_8vars, "data/coeffs_8vars_unscaled.csv", row.names = FALSE)
+WriteXLS::WriteXLS(list(new_X_tp = new_X_tp, 
+                        new_X_frp = new_X_frp,
+                        new_X_nh3 = new_X_nh3,
+                        new_X_tss = new_X_tss,
+                        new_X_ec = new_X_ec,
+                        new_X_tem = new_X_tem,
+                        new_X_tn = new_X_tn,
+                        new_X_nox = new_X_nox), "data/prediction_set.xlsx", row.names = FALSE)
+write.csv(comparisons, "data/comparisons.csv", row.names = FALSE)
+```

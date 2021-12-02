@@ -1,0 +1,834 @@
+---
+title: "Dispersed urban-stormwater control improved stream water quality in a catchment-scale experiment"
+subtitle: "Supplementary methods F: model sampling with predictions to new data"
+author:
+  - Christopher J Walsh, Sam J Imberger, Matthew J Burns, Darren G Bos, and Tim D Fletcher
+date: "School of Ecosystem and Forest Sciences, The University of Melbourne, 500 Yarra Boulevard, Burnley, 3121 Victoria, Australia"
+output:   
+  word_document:
+    reference_docx: officedown_template.docx
+csl: ecol-app.csl
+editor_options: 
+  chunk_output_type: console
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, 
+                      message = FALSE, error = FALSE)
+library(rstan); library(loo); library(magrittr)
+source("code/misc_functions.R")
+rstan_options(auto_write = TRUE)
+options(mc.cores = 4)
+nChains <- 4
+# Set a directory for storing the (large) model objects: 
+# I used a directory on a network drive
+# (the directory needs two sub-directories: model_fits and compiled_models)
+mod_dir <- "[Network Drive]/git-data/lsc_dbs_wq/" #
+```
+
+This document samples the optimal models selected in `wq_methods_D_model_selection.Rmd` to derive predictions for scenarios illustrated in @WalshEtAl_2022.  
+
+```{r}
+sites <- data.frame(readxl::read_excel("data/wq_data_compiled.xlsx", 
+                                         sheet = "sites"))
+wq_data <- data.frame(readxl::read_excel("data/wq_data_compiled.xlsx", 
+                                         sheet = "wq_data"))
+new_X <- data.frame(readxl::read_excel("data/wq_data_compiled.xlsx", 
+                                         sheet = "new_X"))
+wq_data$date_time <- lubridate::ymd_hms(wq_data$date_time)
+# centre and scale time
+wq_data$t <- as.numeric(wq_data$date_time)
+wq_data$t <- 3*(wq_data$t - (min(wq_data$t) + diff(range(wq_data$t))*0.5) )/ diff(range(wq_data$t))
+# set grouping variables as integers (as expected by Stan)
+wq_data$site_no <- as.integer(wq_data$site_no)
+wq_data$stream_no <- as.integer(wq_data$stream_no)
+wq_data$rain365 <- 3*(wq_data$rain365 - (min(wq_data$rain365) + 
+                                           diff(range(wq_data$rain365))*0.5) )/ diff(range(wq_data$rain365))
+wq_data$septic <- 3*(wq_data$septic - (min(wq_data$septic) + 
+                                           diff(range(wq_data$septic))*0.5) )/ diff(range(wq_data$septic))
+
+#Appropriate transformations for the eight variables
+wq_data$lFRP <- log10(wq_data$FRP)
+wq_data$lTP <- log10(wq_data$TP)
+wq_data$lNH3 <- log10(wq_data$NH3)
+wq_data$lTSS <- log10(wq_data$TSS)
+wq_data$sNOx <- wq_data$NOx^0.5
+wq_data$lTN <- log10(wq_data$TN)
+wq_data$sEC <- wq_data$EC^0.5
+wq_data$lTem <- log10(wq_data$Tem)
+
+#data frame matching ultimate EI (degrd) and maximum restr achieved at the 6 experimental sites
+exp_sites <- data.frame(site = c("D8","D4","Ln","L4","Ls","L1"),
+                        restr_ind = c(5,6,2,4,3,7),
+                        max_restr = unique(new_X$restr)[c(5,6,2,4,3,7)],
+                        degrd_ind = c(4:8,10),
+                        degrd = unique(new_X$degrd)[c(4:8,10)])
+
+ys <- c("lFRP","lTP","lNH3","lTSS","lTN","sNOx","sEC","lTem")
+vars <- c("frp","tp","nh3","tss","tn","nox","ec","tem")
+mod_summ <- read.csv("data/mod_summ.csv")
+```
+
+### Total phosphorus
+
+```{r eval = TRUE}
+vari <- "TP"
+opt_mod <-  mod_summ$model_code[mod_summ$optimal_model == 1 & mod_summ$wq_var == vari] #m_1_s_st
+load(paste0(mod_dir, "compiled_models/wq_stan_m_1_x.rda"))
+d <- wq_data[c("samplecode","sitecode","site_no","stream_no","date_time","t",
+               "degrd","restr","rain1","season")]
+d$y <- wq_data$lTP
+d <- d[!is.na(d$y),] #dim(d)[1] 2251 cf 2299 for wq_data
+#Centre the predictor to make search for intercept more efficient
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+dat <- list(N = nrow(d), N_site_no = length(unique(d$site_no)), y = d$y, 
+            site_no = d$site_no, degrd = d$degrd, restr = d$restr, 
+            rain1 = d$rain1,add1 = d$season, t = d$t)
+fit_y_m_1_s <- sampling(m_1_x, data=dat, iter=2000, warmup = 1000, 
+                    cores = 4, chains = nChains) 
+rm(m_1_x)
+y_pred <- as.data.frame(fit_y_m_1_s, include = TRUE, pars = 'mu')
+y_pred_mean <- apply(y_pred, 2, mean)
+d$non_auto_resids <- d$y - y_pred_mean
+d$auto_t <- NA
+  for(j in 1:length(sites$sitecode)){
+    di <- d[d$sitecode == sites$sitecode[j],]
+    di <- di[order(di$date_time),]
+    for(k in 1:dim(di)[1]){
+    di$auto_t[k] <- 
+        mean(di$non_auto_resids[di$date_time >= di$date_time[k] - lubridate::days(45) & 
+                                   di$date_time < di$date_time[k]])
+    }
+    d$auto_t[match(di$samplecode,d$samplecode)] <- di$auto_t
+  }
+missing_index <- which(is.na(d$auto_t))
+no_missing_index <- which(!is.na(d$auto_t_y))
+d$auto_s <- NA  
+wq_dbs8 <- d$samplecode[d$sitecode == "DBS0008"]
+for(i in 1:length(wq_dbs8)){
+  if(sum(as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004") > 1) stop()
+  if(sum(as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004") == 1){
+  d$auto_s[d$samplecode == wq_dbs8[i]] <- 
+    d$non_auto_resids[as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004"]
+  }
+}
+wq_lis4 <- d$samplecode[d$sitecode == "LIS0004"]
+wq_lis <- d[d$sitecode %in% c("LIS0004","LIS0001","LSN0001","LSS0001"),]
+wq_lis$date <- as.Date(wq_lis$date_time)
+wq_lis <- wq_lis[wq_lis$date > as.Date("2011-03-03"),]  #after tribs began to be sampled
+lis_dates <- unique(wq_lis$date)
+for(i in 1:length(lis_dates)){
+  if(sum(as.Date(d$date_time) == lis_dates[i] & d$sitecode == "LIS0004") > 1) stop()
+  if(sum(as.Date(d$date_time) == lis_dates[i] & d$sitecode == "LIS0004") == 1){
+    wq_lisi <- wq_lis[wq_lis$date == lis_dates[i] & wq_lis$sitecode != "LIS0004",]
+  d$auto_s[d$samplecode ==wq_lis$samplecode[wq_lis$date == lis_dates[i] & wq_lis$sitecode == "LIS0004"]] <- mean(d$non_auto_resids[as.Date(d$date_time) == lis_dates[i] & d$sitecode %in% c("LIS0001","LSN0001","LSS0001")])
+  }
+}
+auto_t <- d$auto_t; auto_t[is.na(auto_t)] <- 9999
+auto_s <- d$auto_s; auto_s[is.na(auto_s)] <- 9999
+dat$auto_t <- auto_t
+dat$auto_s <- auto_s
+dat$n_st_miss <- as.integer(sum(is.na(d$auto_s) & is.na(d$auto_t)))
+dat$n_s_miss <- as.integer(sum(is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$n_t_miss <- as.integer(sum(!is.na(d$auto_s) & is.na(d$auto_t)))
+dat$n_no_miss <- as.integer(sum(!is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$st_miss <- as.integer(which(is.na(d$auto_s) & is.na(d$auto_t)))
+dat$s_miss <- as.integer(which(is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$t_miss <- as.integer(which(!is.na(d$auto_s) & is.na(d$auto_t)))
+dat$no_miss <- as.integer(which(!is.na(d$auto_s) & !is.na(d$auto_t)))
+save(dat, file = paste0(mod_dir, "data/data_tp_m_1_s_st_p.rda"))
+```
+
+```{r eval = TRUE}
+load("data/data_tp_m_1_s_st_p.rda")
+load(paste0(mod_dir, "compiled_models/wq_stan_m_1_x_st_p.rda"))
+new_Xi <- unique(new_X[c("degrd","restr","rain1","season","t")])
+new_X_by_wqvar <- list(tp = new_Xi)
+dat$N2 <- dim(new_Xi)[1]
+dat$degrd_p <- new_Xi$degrd
+dat$restr_p <- new_Xi$restr
+dat$rain1_p <- new_Xi$rain1
+dat$add1_p <- new_Xi$season
+dat$t_p <- new_Xi$t # near end of study
+# extract posterior predictions of mu for each data point
+fit_tp_m_1_s_st_p <- sampling(m_1_x_st_p, data=dat, iter=2000, warmup = 1000, 
+                                cores = 4, chains = nChains)
+# check_hmc_diagnostics(fit_tp_m_1_s_st_p)
+save(fit_tp_m_1_s_st_p, 
+     file = paste0(mod_dir, "model_fits/fit_tp_m_1_s_st_p.rda"))
+rm(y_pred, fit_tp_m_1_s_st_p, m_1_x_st_p)
+gc() # garbage collection
+```
+
+### Filterable reactive phosphorus
+
+```{r eval = TRUE}
+vari <- "frp"
+opt_mod <-  mod_summ$model_code[mod_summ$optimal_model == 1 & mod_summ$var == vari] #m_1_cs_st
+load(paste0(mod_dir, "compiled_models/wq_stan_m_1_xx.rda"))
+d <- wq_data[c("samplecode","sitecode","site_no","stream_no","date_time","t",
+               "degrd","restr","rain1","channel","season","diel")]
+d$y <- wq_data$lFRP
+d <- d[!is.na(d$y),] #dim(d)[1] 2251 cf 2299 for wq_data
+#Centre the predictor to make search for intercept more efficient
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+dat <- list(N = nrow(d), N_site_no = length(unique(d$site_no)), y = d$y, 
+            site_no = d$site_no, degrd = d$degrd, restr = d$restr, 
+            rain1 = d$rain1,t = d$t, add1 = d$channel, add2 = d$season)
+fit_y_m_1_cs <- sampling(m_1_xx, data=dat, iter=2000, warmup = 1000, 
+                    cores = 4, chains = nChains) 
+rm(m_1_xx)
+y_pred <- as.data.frame(fit_y_m_1_cs, include = TRUE, pars = 'mu')
+y_pred_mean <- apply(y_pred, 2, mean)
+d$non_auto_resids <- d$y - y_pred_mean
+d$auto_t <- NA
+  for(j in 1:length(sites$sitecode)){
+    di <- d[d$sitecode == sites$sitecode[j],]
+    di <- di[order(di$date_time),]
+    for(k in 1:dim(di)[1]){
+    di$auto_t[k] <- 
+        mean(di$non_auto_resids[di$date_time >= di$date_time[k] - lubridate::days(45) & 
+                                   di$date_time < di$date_time[k]])
+    }
+    d$auto_t[match(di$samplecode,d$samplecode)] <- di$auto_t
+  }
+missing_index <- which(is.na(d$auto_t))
+no_missing_index <- which(!is.na(d$auto_t_y))
+d$auto_s <- NA  
+wq_dbs8 <- d$samplecode[d$sitecode == "DBS0008"]
+for(i in 1:length(wq_dbs8)){
+  if(sum(as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004") > 1) stop()
+  if(sum(as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004") == 1){
+  d$auto_s[d$samplecode == wq_dbs8[i]] <- 
+    d$non_auto_resids[as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004"]
+  }
+}
+wq_lis4 <- d$samplecode[d$sitecode == "LIS0004"]
+wq_lis <- d[d$sitecode %in% c("LIS0004","LIS0001","LSN0001","LSS0001"),]
+wq_lis$date <- as.Date(wq_lis$date_time)
+wq_lis <- wq_lis[wq_lis$date > as.Date("2011-03-03"),]  #after tribs began to be sampled
+lis_dates <- unique(wq_lis$date)
+for(i in 1:length(lis_dates)){
+  if(sum(as.Date(d$date_time) == lis_dates[i] & d$sitecode == "LIS0004") > 1) stop()
+  if(sum(as.Date(d$date_time) == lis_dates[i] & d$sitecode == "LIS0004") == 1){
+    wq_lisi <- wq_lis[wq_lis$date == lis_dates[i] & wq_lis$sitecode != "LIS0004",]
+  d$auto_s[d$samplecode ==wq_lis$samplecode[wq_lis$date == lis_dates[i] & wq_lis$sitecode == "LIS0004"]] <- mean(d$non_auto_resids[as.Date(d$date_time) == lis_dates[i] & d$sitecode %in% c("LIS0001","LSN0001","LSS0001")])
+  }
+}
+auto_t <- d$auto_t; auto_t[is.na(auto_t)] <- 9999
+auto_s <- d$auto_s; auto_s[is.na(auto_s)] <- 9999
+dat$auto_t <- auto_t
+dat$auto_s <- auto_s
+dat$n_st_miss <- as.integer(sum(is.na(d$auto_s) & is.na(d$auto_t)))
+dat$n_s_miss <- as.integer(sum(is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$n_t_miss <- as.integer(sum(!is.na(d$auto_s) & is.na(d$auto_t)))
+dat$n_no_miss <- as.integer(sum(!is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$st_miss <- as.integer(which(is.na(d$auto_s) & is.na(d$auto_t)))
+dat$s_miss <- as.integer(which(is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$t_miss <- as.integer(which(!is.na(d$auto_s) & is.na(d$auto_t)))
+dat$no_miss <- as.integer(which(!is.na(d$auto_s) & !is.na(d$auto_t)))
+save(dat, file = paste0(mod_dir, "data/data_frp_m_1_cs_st_p.rda"))
+```
+
+```{r eval = TRUE}
+load("data/data_frp_m_1_cs_st_p.rda")
+load(paste0(mod_dir, "compiled_models/wq_stan_m_1_xx_st_p.rda"))
+new_Xi <- unique(new_X[c("degrd","restr","rain1","channel","season","t")])
+new_X_by_wqvar$frp <- new_Xi
+dat$N2 <- dim(new_Xi)[1]
+dat$degrd_p <- new_Xi$degrd
+dat$restr_p <- new_Xi$restr
+dat$rain1_p <- new_Xi$rain1
+dat$add1_p <- new_Xi$channel
+dat$add2_p <- new_Xi$season
+dat$t_p <- rep(1.4, dim(new_Xi)[1]) # near end of study
+# extract posterior predictions of mu for each data point
+fit_frp_m_1_cs_st_p <- sampling(m_1_xx_st_p, data=dat, iter=2000, warmup = 1000, 
+                                cores = 4, chains = nChains)
+# check_hmc_diagnostics(fit_frp_m_1_cs_st_p)
+save(fit_frp_m_1_cs_st_p, 
+     file = paste0(mod_dir, "model_fits/fit_frp_m_1_cs_st_p.rda"))
+#rm(y_pred, fit_frp_m_1_cs_st_p, m_1_xx_st_p)
+gc() # garbage collection
+```
+
+### Ammonium
+
+```{r eval = TRUE}
+vari <- "nh3"
+opt_mod <-  mod_summ$model_code[mod_summ$optimal_model == 1 & mod_summ$var == vari]
+load(paste0(mod_dir, "compiled_models/wq_stan_m_1_xx.rda"))
+d <- wq_data[c("samplecode","sitecode","site_no","stream_no","date_time","t",
+               "degrd","restr","rain1","season","rain365")]
+d$y <- wq_data$lNH3
+d <- d[!is.na(d$y),] #dim(d)[1] 2251 cf 2299 for wq_data
+#Centre the predictor to make search for intercept more efficient
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+dat <- list(N = nrow(d), N_site_no = length(unique(d$site_no)), y = d$y, 
+            site_no = d$site_no, degrd = d$degrd, restr = d$restr, 
+            rain1 = d$rain1, add1 = d$season, add2 = d$rain365, t = d$t)
+fit_y_m_1_sr <- sampling(m_1_xx, data=dat, iter=2000, warmup = 1000, 
+                    cores = 4, chains = nChains) 
+rm(m_1_xx)
+y_pred <- as.data.frame(fit_y_m_1_sr, include = TRUE, pars = 'mu')
+y_pred_mean <- apply(y_pred, 2, mean)
+d$non_auto_resids <- d$y - y_pred_mean
+d$auto_t <- NA
+  for(j in 1:length(sites$sitecode)){
+    di <- d[d$sitecode == sites$sitecode[j],]
+    di <- di[order(di$date_time),]
+    for(k in 1:dim(di)[1]){
+    di$auto_t[k] <- 
+        mean(di$non_auto_resids[di$date_time >= di$date_time[k] - lubridate::days(45) & 
+                                   di$date_time < di$date_time[k]])
+    }
+    d$auto_t[match(di$samplecode,d$samplecode)] <- di$auto_t
+  }
+missing_index <- which(is.na(d$auto_t))
+no_missing_index <- which(!is.na(d$auto_t_y))
+d$auto_s <- NA  
+wq_dbs8 <- d$samplecode[d$sitecode == "DBS0008"]
+for(i in 1:length(wq_dbs8)){
+  if(sum(as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004") > 1) stop()
+  if(sum(as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004") == 1){
+  d$auto_s[d$samplecode == wq_dbs8[i]] <- 
+    d$non_auto_resids[as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004"]
+  }
+}
+wq_lis4 <- d$samplecode[d$sitecode == "LIS0004"]
+wq_lis <- d[d$sitecode %in% c("LIS0004","LIS0001","LSN0001","LSS0001"),]
+wq_lis$date <- as.Date(wq_lis$date_time)
+wq_lis <- wq_lis[wq_lis$date > as.Date("2011-03-03"),]  #after tribs began to be sampled
+lis_dates <- unique(wq_lis$date)
+for(i in 1:length(lis_dates)){
+  if(sum(as.Date(d$date_time) == lis_dates[i] & d$sitecode == "LIS0004") > 1) stop()
+  if(sum(as.Date(d$date_time) == lis_dates[i] & d$sitecode == "LIS0004") == 1){
+    wq_lisi <- wq_lis[wq_lis$date == lis_dates[i] & wq_lis$sitecode != "LIS0004",]
+  d$auto_s[d$samplecode ==wq_lis$samplecode[wq_lis$date == lis_dates[i] & wq_lis$sitecode == "LIS0004"]] <- mean(d$non_auto_resids[as.Date(d$date_time) == lis_dates[i] & d$sitecode %in% c("LIS0001","LSN0001","LSS0001")])
+  }
+}
+auto_t <- d$auto_t; auto_t[is.na(auto_t)] <- 9999
+auto_s <- d$auto_s; auto_s[is.na(auto_s)] <- 9999
+dat$auto_t <- auto_t
+dat$auto_s <- auto_s
+dat$n_st_miss <- as.integer(sum(is.na(d$auto_s) & is.na(d$auto_t)))
+dat$n_s_miss <- as.integer(sum(is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$n_t_miss <- as.integer(sum(!is.na(d$auto_s) & is.na(d$auto_t)))
+dat$n_no_miss <- as.integer(sum(!is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$st_miss <- as.integer(which(is.na(d$auto_s) & is.na(d$auto_t)))
+dat$s_miss <- as.integer(which(is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$t_miss <- as.integer(which(!is.na(d$auto_s) & is.na(d$auto_t)))
+dat$no_miss <- as.integer(which(!is.na(d$auto_s) & !is.na(d$auto_t)))
+save(dat, file = paste0(mod_dir, "data/data_nh3_m_1_sr_st_p.rda"))
+```
+
+```{r eval = TRUE}
+load("data/data_nh3_m_1_sr_st_p.rda")
+load(paste0(mod_dir, "compiled_models/wq_stan_m_1_xx_st_p.rda"))
+new_Xi <- unique(new_X[c("degrd","restr","rain1","season","rain365","t")])
+new_X_by_wqvar$nh3 <- new_Xi
+dat$N2 <- dim(new_Xi)[1]
+dat$degrd_p <- new_Xi$degrd
+dat$restr_p <- new_Xi$restr
+dat$rain1_p <- new_Xi$rain1
+dat$add1_p <- new_Xi$season
+dat$add2_p <- new_Xi$rain365
+dat$t_p <- new_Xi$t # near end of study
+# extract posterior predictions of mu for each data point
+fit_nh3_m_1_sr_st_p <- sampling(m_1_xx_st_p, data=dat, iter=2000, warmup = 1000, 
+                                cores = 4, chains = nChains)
+# check_hmc_diagnostics(fit_tp_m_1_sr_st_p)
+save(fit_nh3_m_1_sr_st_p, 
+     file = paste0(mod_dir, "model_fits/fit_nh3_m_1_sr_st_p.rda"))
+rm(y_pred, fit_nh3_m_1_sr_st_p, m_1_xx_st_p)
+gc() # garbage collection
+```
+
+### Total suspended solids
+
+```{r eval = TRUE}
+vari <- "tss"
+opt_mod <-  mod_summ$model_code[mod_summ$optimal_model == 1 & mod_summ$var == vari] #y_m_1_s
+load(paste0(mod_dir, "compiled_models/wq_stan_m_1_x.rda"))
+d <- wq_data[c("samplecode","sitecode","site_no","stream_no","date_time","t",
+               "degrd","restr","rain1","season")]
+d$y <- wq_data$lTSS
+d <- d[!is.na(d$y),] #dim(d)[1] 2251 cf 2299 for wq_data
+#Centre the predictor to make search for intercept more efficient
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+dat <- list(N = nrow(d), N_site_no = length(unique(d$site_no)), y = d$y, 
+            site_no = d$site_no, degrd = d$degrd, restr = d$restr, 
+            rain1 = d$rain1,add1 = d$season, t = d$t)
+fit_y_m_1_s <- sampling(m_1_x, data=dat, iter=2000, warmup = 1000, 
+                    cores = 4, chains = nChains) 
+rm(m_1_x)
+y_pred <- as.data.frame(fit_y_m_1_s, include = TRUE, pars = 'mu')
+y_pred_mean <- apply(y_pred, 2, mean)
+d$non_auto_resids <- d$y - y_pred_mean
+d$auto_t <- NA
+  for(j in 1:length(sites$sitecode)){
+    di <- d[d$sitecode == sites$sitecode[j],]
+    di <- di[order(di$date_time),]
+    for(k in 1:dim(di)[1]){
+    di$auto_t[k] <- 
+        mean(di$non_auto_resids[di$date_time >= di$date_time[k] - lubridate::days(45) & 
+                                   di$date_time < di$date_time[k]])
+    }
+    d$auto_t[match(di$samplecode,d$samplecode)] <- di$auto_t
+  }
+missing_index <- which(is.na(d$auto_t))
+no_missing_index <- which(!is.na(d$auto_t_y))
+d$auto_s <- NA  
+wq_dbs8 <- d$samplecode[d$sitecode == "DBS0008"]
+for(i in 1:length(wq_dbs8)){
+  if(sum(as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004") > 1) stop()
+  if(sum(as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004") == 1){
+  d$auto_s[d$samplecode == wq_dbs8[i]] <- 
+    d$non_auto_resids[as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004"]
+  }
+}
+wq_lis4 <- d$samplecode[d$sitecode == "LIS0004"]
+wq_lis <- d[d$sitecode %in% c("LIS0004","LIS0001","LSN0001","LSS0001"),]
+wq_lis$date <- as.Date(wq_lis$date_time)
+wq_lis <- wq_lis[wq_lis$date > as.Date("2011-03-03"),]  #after tribs began to be sampled
+lis_dates <- unique(wq_lis$date)
+for(i in 1:length(lis_dates)){
+  if(sum(as.Date(d$date_time) == lis_dates[i] & d$sitecode == "LIS0004") > 1) stop()
+  if(sum(as.Date(d$date_time) == lis_dates[i] & d$sitecode == "LIS0004") == 1){
+    wq_lisi <- wq_lis[wq_lis$date == lis_dates[i] & wq_lis$sitecode != "LIS0004",]
+  d$auto_s[d$samplecode ==wq_lis$samplecode[wq_lis$date == lis_dates[i] & wq_lis$sitecode == "LIS0004"]] <- mean(d$non_auto_resids[as.Date(d$date_time) == lis_dates[i] & d$sitecode %in% c("LIS0001","LSN0001","LSS0001")])
+  }
+}
+auto_t <- d$auto_t; auto_t[is.na(auto_t)] <- 9999
+auto_s <- d$auto_s; auto_s[is.na(auto_s)] <- 9999
+dat$auto_t <- auto_t
+dat$auto_s <- auto_s
+dat$n_st_miss <- as.integer(sum(is.na(d$auto_s) & is.na(d$auto_t)))
+dat$n_s_miss <- as.integer(sum(is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$n_t_miss <- as.integer(sum(!is.na(d$auto_s) & is.na(d$auto_t)))
+dat$n_no_miss <- as.integer(sum(!is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$st_miss <- as.integer(which(is.na(d$auto_s) & is.na(d$auto_t)))
+dat$s_miss <- as.integer(which(is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$t_miss <- as.integer(which(!is.na(d$auto_s) & is.na(d$auto_t)))
+dat$no_miss <- as.integer(which(!is.na(d$auto_s) & !is.na(d$auto_t)))
+save(dat, file = paste0(mod_dir, "data/data_tss_m_1_s_st_p.rda"))
+```
+
+```{r eval = TRUE}
+load("data/data_tss_m_1_s_st_p.rda")
+load(paste0(mod_dir, "compiled_models/wq_stan_m_1_x_st_p.rda"))
+new_Xi <- unique(new_X[c("degrd","restr","rain1","season","t")])
+new_X_by_wqvar$tss <- new_Xi
+dat$N2 <- dim(new_Xi)[1]
+dat$degrd_p <- new_Xi$degrd
+dat$restr_p <- new_Xi$restr
+dat$rain1_p <- new_Xi$rain1
+dat$add1_p <- new_Xi$season
+dat$t_p <- new_Xi$t # near end of study
+# extract posterior predictions of mu for each data point
+fit_tss_m_1_s_st_p <- sampling(m_1_x_st_p, data=dat, iter=2000, warmup = 1000, 
+                                cores = 4, chains = nChains)
+# check_hmc_diagnostics(fit_tp_m_1_s_st_p)
+save(fit_tss_m_1_s_st_p, 
+     file = paste0(mod_dir, "model_fits/fit_tss_m_1_s_st_p.rda"))
+#rm(y_pred, fit_tss_m_1_s_st_p, m_1_x_st_p)
+gc() # garbage collection
+```
+
+### Temperature
+
+```{r eval = TRUE}
+vari <- "tem"
+opt_mod <-  mod_summ$model_code[mod_summ$optimal_model == 1 & mod_summ$var == vari] 
+#"m_3ft_sdr_int_st"
+load(paste0(mod_dir, "compiled_models/wq_stan_m_3ft_sdr_int.rda"))
+d <- wq_data[c("samplecode","sitecode","site_no","stream_no","date_time","t",
+               "degrd","restr","rain1","rain365","channel","season","diel")]
+d$y <- wq_data$lTem
+d <- d[!is.na(d$y),] #dim(d)[1] 2251 cf 2299 for wq_data
+#Centre the predictor to make search for intercept more efficient
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+dat <- list(N = nrow(d), N_site_no = length(unique(d$site_no)), y = d$y, 
+            site_no = d$site_no, degrd = d$degrd, restr = d$restr, 
+            rain1 = d$rain1,t = d$t, season = d$season, diel = d$diel, rain365 = d$rain365)
+fit_tem_m_3ft_sdr_int <- sampling(m_3ft_sdr_int, data=dat, iter=2000, warmup = 1000, 
+                    cores = 4, chains = nChains) 
+rm(m_3ft_sdr_int)
+y_pred <- as.data.frame(fit_tem_m_3ft_sdr_int, include = TRUE, pars = 'mu')
+y_pred_mean <- apply(y_pred, 2, mean)
+d$non_auto_resids <- d$y - y_pred_mean
+d$auto_t <- NA
+  for(j in 1:length(sites$sitecode)){
+    di <- d[d$sitecode == sites$sitecode[j],]
+    di <- di[order(di$date_time),]
+    for(k in 1:dim(di)[1]){
+    di$auto_t[k] <- 
+        mean(di$non_auto_resids[di$date_time >= di$date_time[k] - lubridate::days(45) & 
+                                   di$date_time < di$date_time[k]])
+    }
+    d$auto_t[match(di$samplecode,d$samplecode)] <- di$auto_t
+  }
+missing_index <- which(is.na(d$auto_t))
+no_missing_index <- which(!is.na(d$auto_t_y))
+d$auto_s <- NA  
+wq_dbs8 <- d$samplecode[d$sitecode == "DBS0008"]
+for(i in 1:length(wq_dbs8)){
+  if(sum(as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004") > 1) stop()
+  if(sum(as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004") == 1){
+  d$auto_s[d$samplecode == wq_dbs8[i]] <- 
+    d$non_auto_resids[as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004"]
+  }
+}
+wq_lis4 <- d$samplecode[d$sitecode == "LIS0004"]
+wq_lis <- d[d$sitecode %in% c("LIS0004","LIS0001","LSN0001","LSS0001"),]
+wq_lis$date <- as.Date(wq_lis$date_time)
+wq_lis <- wq_lis[wq_lis$date > as.Date("2011-03-03"),]  #after tribs began to be sampled
+lis_dates <- unique(wq_lis$date)
+for(i in 1:length(lis_dates)){
+  if(sum(as.Date(d$date_time) == lis_dates[i] & d$sitecode == "LIS0004") > 1) stop()
+  if(sum(as.Date(d$date_time) == lis_dates[i] & d$sitecode == "LIS0004") == 1){
+    wq_lisi <- wq_lis[wq_lis$date == lis_dates[i] & wq_lis$sitecode != "LIS0004",]
+  d$auto_s[d$samplecode ==wq_lis$samplecode[wq_lis$date == lis_dates[i] & wq_lis$sitecode == "LIS0004"]] <- mean(d$non_auto_resids[as.Date(d$date_time) == lis_dates[i] & d$sitecode %in% c("LIS0001","LSN0001","LSS0001")])
+  }
+}
+auto_t <- d$auto_t; auto_t[is.na(auto_t)] <- 9999
+auto_s <- d$auto_s; auto_s[is.na(auto_s)] <- 9999
+dat$auto_t <- auto_t
+dat$auto_s <- auto_s
+dat$n_st_miss <- as.integer(sum(is.na(d$auto_s) & is.na(d$auto_t)))
+dat$n_s_miss <- as.integer(sum(is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$n_t_miss <- as.integer(sum(!is.na(d$auto_s) & is.na(d$auto_t)))
+dat$n_no_miss <- as.integer(sum(!is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$st_miss <- as.integer(which(is.na(d$auto_s) & is.na(d$auto_t)))
+dat$s_miss <- as.integer(which(is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$t_miss <- as.integer(which(!is.na(d$auto_s) & is.na(d$auto_t)))
+dat$no_miss <- as.integer(which(!is.na(d$auto_s) & !is.na(d$auto_t)))
+save(dat, file = paste0(mod_dir, "data/data_tem_m_3ft_sdr_int.rda"))
+```
+
+```{r eval = TRUE}
+load("data/data_tem_m_3ft_sdr_int.rda")
+load(paste0(mod_dir, "compiled_models/wq_stan_m_3ft_sdr_int_st_p.rda"))
+new_Xi <- unique(new_X[c("degrd","restr","rain1","season","rain365","diel","t")])
+new_X_by_wqvar$tem <- new_Xi
+dat$N2 <- dim(new_Xi)[1]
+dat$degrd_p <- new_Xi$degrd
+dat$restr_p <- new_Xi$restr
+dat$rain1_p <- new_Xi$rain1
+dat$diel_p <- new_Xi$diel
+dat$season_p <- new_Xi$season
+dat$rain365_p <- new_Xi$rain365
+dat$t_p <- new_Xi$t
+# extract posterior predictions of mu for each data point
+fit_tem_m_3ft_sdr_int_st_p <- sampling(m_3ft_sdr_int_st_p, data=dat, iter=2000, warmup = 1000, 
+                                cores = 4, chains = nChains)
+# check_hmc_diagnostics(fit_frp_m_1_cs_st_p)
+save(fit_tem_m_3ft_sdr_int_st_p, 
+     file = paste0(mod_dir, "model_fits/fit_tem_m_3ft_sdr_int_st_p.rda"))
+rm(fit_tem_m_3ft_sdr_int_st_p, m_3ft_sdr_int_st_p)
+gc() # garbage collection
+```
+ 
+### Electrical conductivity
+
+```{r eval = TRUE}
+vari <- "ec"
+opt_mod <-  mod_summ$model_code[mod_summ$optimal_model == 1 & mod_summ$var == vari] #m_1_st
+load(paste0(mod_dir, "compiled_models/wq_stan_m_1.rda"))
+d <- wq_data[c("samplecode","sitecode","site_no","stream_no","date_time","t",
+               "degrd","restr","rain1")]
+d$y <- wq_data$sEC
+d <- d[!is.na(d$y),] 
+#Centre the predictor to make search for intercept more efficient
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+dat <- list(N = nrow(d), N_site_no = length(unique(d$site_no)), y = d$y, 
+            site_no = d$site_no, degrd = d$degrd, restr = d$restr, 
+            rain1 = d$rain1,t = d$t)
+fit_ec_m_1 <- sampling(m_1, data=dat, iter=2000, warmup = 1000, 
+                    cores = 4, chains = nChains) 
+rm(m_1)
+y_pred <- as.data.frame(fit_ec_m_1, include = TRUE, pars = 'mu')
+y_pred_mean <- apply(y_pred, 2, mean)
+d$non_auto_resids <- d$y - y_pred_mean
+d$auto_t <- NA
+  for(j in 1:length(sites$sitecode)){
+    di <- d[d$sitecode == sites$sitecode[j],]
+    di <- di[order(di$date_time),]
+    for(k in 1:dim(di)[1]){
+    di$auto_t[k] <- 
+        mean(di$non_auto_resids[di$date_time >= di$date_time[k] - lubridate::days(45) & 
+                                   di$date_time < di$date_time[k]])
+    }
+    d$auto_t[match(di$samplecode,d$samplecode)] <- di$auto_t
+  }
+missing_index <- which(is.na(d$auto_t))
+no_missing_index <- which(!is.na(d$auto_t_y))
+d$auto_s <- NA  
+wq_dbs8 <- d$samplecode[d$sitecode == "DBS0008"]
+for(i in 1:length(wq_dbs8)){
+  if(sum(as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004") > 1) stop()
+  if(sum(as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004") == 1){
+  d$auto_s[d$samplecode == wq_dbs8[i]] <- 
+    d$non_auto_resids[as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004"]
+  }
+}
+wq_lis4 <- d$samplecode[d$sitecode == "LIS0004"]
+wq_lis <- d[d$sitecode %in% c("LIS0004","LIS0001","LSN0001","LSS0001"),]
+wq_lis$date <- as.Date(wq_lis$date_time)
+wq_lis <- wq_lis[wq_lis$date > as.Date("2011-03-03"),]  #after tribs began to be sampled
+lis_dates <- unique(wq_lis$date)
+for(i in 1:length(lis_dates)){
+  if(sum(as.Date(d$date_time) == lis_dates[i] & d$sitecode == "LIS0004") > 1) stop()
+  if(sum(as.Date(d$date_time) == lis_dates[i] & d$sitecode == "LIS0004") == 1){
+    wq_lisi <- wq_lis[wq_lis$date == lis_dates[i] & wq_lis$sitecode != "LIS0004",]
+  d$auto_s[d$samplecode ==wq_lis$samplecode[wq_lis$date == lis_dates[i] & wq_lis$sitecode == "LIS0004"]] <- mean(d$non_auto_resids[as.Date(d$date_time) == lis_dates[i] & d$sitecode %in% c("LIS0001","LSN0001","LSS0001")])
+  }
+}
+auto_t <- d$auto_t; auto_t[is.na(auto_t)] <- 9999
+auto_s <- d$auto_s; auto_s[is.na(auto_s)] <- 9999
+dat$auto_t <- auto_t
+dat$auto_s <- auto_s
+dat$n_st_miss <- as.integer(sum(is.na(d$auto_s) & is.na(d$auto_t)))
+dat$n_s_miss <- as.integer(sum(is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$n_t_miss <- as.integer(sum(!is.na(d$auto_s) & is.na(d$auto_t)))
+dat$n_no_miss <- as.integer(sum(!is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$st_miss <- as.integer(which(is.na(d$auto_s) & is.na(d$auto_t)))
+dat$s_miss <- as.integer(which(is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$t_miss <- as.integer(which(!is.na(d$auto_s) & is.na(d$auto_t)))
+dat$no_miss <- as.integer(which(!is.na(d$auto_s) & !is.na(d$auto_t)))
+save(dat, file = paste0(mod_dir, "data/data_ec_m_1.rda"))
+```
+
+```{r eval = TRUE}
+load("data/data_ec_m_1.rda")
+load(paste0(mod_dir, "compiled_models/wq_stan_m_1_st_p.rda"))
+new_Xi <- unique(new_X[c("degrd","restr","rain1","t")])
+new_X_by_wqvar$ec <- new_Xi
+dat$N2 <- dim(new_Xi)[1]
+dat$degrd_p <- new_Xi$degrd
+dat$restr_p <- new_Xi$restr
+dat$rain1_p <- new_Xi$rain1
+dat$t_p <- new_Xi$t
+# extract posterior predictions of mu for each data point
+fit_ec_m_1_st_p <- sampling(m_1_st_p, data=dat, iter=2000, warmup = 1000, 
+                                cores = 4, chains = nChains)
+# check_hmc_diagnostics(fit_frp_m_1_cs_st_p)
+save(fit_ec_m_1_st_p, 
+     file = paste0(mod_dir, "model_fits/fit_ec_m_1_st_p.rda"))
+rm(fit_ec_m_1_st_p, m_1_st_p)
+gc() # garbage collection
+```
+
+### Nitrate + nitrite
+
+```{r eval = TRUE}
+vari <- "nox"
+opt_mod <-  mod_summ$model_code[mod_summ$optimal_model == 1 & mod_summ$var == vari]
+#"m_1ft_esr_int_st"
+load(paste0(mod_dir, "compiled_models/wq_stan_m_1ft_xxx_int.rda"))
+d <- wq_data[c("samplecode","sitecode","site_no","stream_no","date_time","t",
+               "degrd","restr","rain1","channel","rain365","septic","season")]
+d$y <- wq_data$sNOx
+d <- d[!is.na(d$y),] #dim(d)[1] 2251 cf 2299 for wq_data
+#Centre the predictor to make search for intercept more efficient
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+dat <- list(N = nrow(d), N_site_no = length(unique(d$site_no)), y = d$y, 
+            site_no = d$site_no, degrd = d$degrd, restr = d$restr, 
+            rain1 = d$rain1,add1 = d$septic, add2 = d$season, add3 = d$rain365, t = d$t)
+fit_y_m_1ft_esr_int <- sampling(m_1ft_xxx_int, data=dat, iter=2000, warmup = 1000, 
+                    cores = 4, chains = nChains, control = list(max_treedepth = 15)) 
+rm(m_1ft_xxx_int)
+y_pred <- as.data.frame(fit_y_m_1ft_esr_int, include = TRUE, pars = 'mu')
+y_pred_mean <- apply(y_pred, 2, mean)
+d$non_auto_resids <- d$y - y_pred_mean
+d$auto_t <- NA
+  for(j in 1:length(sites$sitecode)){
+    di <- d[d$sitecode == sites$sitecode[j],]
+    di <- di[order(di$date_time),]
+    for(k in 1:dim(di)[1]){
+    di$auto_t[k] <- 
+        mean(di$non_auto_resids[di$date_time >= di$date_time[k] - lubridate::days(45) & 
+                                   di$date_time < di$date_time[k]])
+    }
+    d$auto_t[match(di$samplecode,d$samplecode)] <- di$auto_t
+  }
+missing_index <- which(is.na(d$auto_t))
+no_missing_index <- which(!is.na(d$auto_t_y))
+d$auto_s <- NA  
+wq_dbs8 <- d$samplecode[d$sitecode == "DBS0008"]
+for(i in 1:length(wq_dbs8)){
+  if(sum(as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004") > 1) stop()
+  if(sum(as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004") == 1){
+  d$auto_s[d$samplecode == wq_dbs8[i]] <- 
+    d$non_auto_resids[as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004"]
+  }
+}
+wq_lis4 <- d$samplecode[d$sitecode == "LIS0004"]
+wq_lis <- d[d$sitecode %in% c("LIS0004","LIS0001","LSN0001","LSS0001"),]
+wq_lis$date <- as.Date(wq_lis$date_time)
+wq_lis <- wq_lis[wq_lis$date > as.Date("2011-03-03"),]  #after tribs began to be sampled
+lis_dates <- unique(wq_lis$date)
+for(i in 1:length(lis_dates)){
+  if(sum(as.Date(d$date_time) == lis_dates[i] & d$sitecode == "LIS0004") > 1) stop()
+  if(sum(as.Date(d$date_time) == lis_dates[i] & d$sitecode == "LIS0004") == 1){
+    wq_lisi <- wq_lis[wq_lis$date == lis_dates[i] & wq_lis$sitecode != "LIS0004",]
+  d$auto_s[d$samplecode ==wq_lis$samplecode[wq_lis$date == lis_dates[i] & wq_lis$sitecode == "LIS0004"]] <- mean(d$non_auto_resids[as.Date(d$date_time) == lis_dates[i] & d$sitecode %in% c("LIS0001","LSN0001","LSS0001")])
+  }
+}
+auto_t <- d$auto_t; auto_t[is.na(auto_t)] <- 9999
+auto_s <- d$auto_s; auto_s[is.na(auto_s)] <- 9999
+dat$auto_t <- auto_t
+dat$auto_s <- auto_s
+dat$n_st_miss <- as.integer(sum(is.na(d$auto_s) & is.na(d$auto_t)))
+dat$n_s_miss <- as.integer(sum(is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$n_t_miss <- as.integer(sum(!is.na(d$auto_s) & is.na(d$auto_t)))
+dat$n_no_miss <- as.integer(sum(!is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$st_miss <- as.integer(which(is.na(d$auto_s) & is.na(d$auto_t)))
+dat$s_miss <- as.integer(which(is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$t_miss <- as.integer(which(!is.na(d$auto_s) & is.na(d$auto_t)))
+dat$no_miss <- as.integer(which(!is.na(d$auto_s) & !is.na(d$auto_t)))
+save(dat, file = paste0(mod_dir, "data/data_nox_m_1ft_esr_int_st_p.rda"))
+```
+
+```{r eval = TRUE}
+load("data/data_nox_m_1ft_esr_int_st_p.rda")
+load(paste0(mod_dir, "compiled_models/wq_stan_m_1ft_xxx_int_st_p.rda"))
+new_Xi <- unique(new_X[c("degrd","restr","rain1","season","rain365","septic","t")])
+#set septic values for prediction to the six experimental sites
+#set septic values for prediction to the six experimental sites
+site_septics <- unique(wq_data[c("sitecode","septic")])
+exp_sites$sitecode <- sites$sitecode[match(exp_sites$site, sites$cat)]
+exp_sites$septic <- site_septics$septic[match(exp_sites$sitecode,site_septics$sitecode)]
+for(s in 1:nrow(exp_sites)){
+  new_Xis <- new_Xi[new_Xi$restr  %in% c(0, exp_sites$max_restr[s]) & 
+                      new_Xi$degrd == exp_sites$degrd[s],]
+  new_Xis$septic <- exp_sites$septic[s]
+  new_Xi <- rbind(new_Xi, new_Xis)
+}
+new_Xi <- unique(new_Xi)
+new_X_by_wqvar$nox <- new_Xi
+new_Xi$ind <- 1:dim(new_Xi)[1]
+
+dat$N2 <- dim(new_Xi)[1]
+dat$degrd_p <- new_Xi$degrd
+dat$restr_p <- new_Xi$restr
+dat$rain1_p <- new_Xi$rain1
+dat$add1_p <- new_Xi$septic
+dat$add2_p <- new_Xi$season
+dat$add3_p <- new_Xi$rain365
+dat$t_p <- new_Xi$t # near end of study
+# extract posterior predictions of mu for each data point
+fit_nox_m_1ft_esr_int_st_p <- sampling(m_1ft_xxx_int_st_p, data=dat, iter=2000, warmup = 1000, 
+                                cores = 4, chains = nChains, control = list(max_treedepth = 15))
+# check_hmc_diagnostics(fit_nox_m_1ft_esr_int_st_p)
+save(fit_nox_m_1ft_esr_int_st_p, 
+     file = paste0(mod_dir, "model_fits/fit_nox_m_1ft_esr_int_st_p.rda"))
+rm(y_pred, fit_nox_m_1ft_esr_int_st_p, m_1ft_xxx_int_st_p)
+gc() # garbage collection
+```
+
+### Total nitrogen
+
+```{r eval = TRUE}
+vari <- "tn"
+opt_mod <-  mod_summ$model_code[mod_summ$optimal_model == 1 & mod_summ$var == vari]
+load(paste0(mod_dir, "compiled_models/wq_stan_m_1ft_xxx_int.rda"))
+d <- wq_data[c("samplecode","sitecode","channel","site_no","stream_no","date_time","t",
+               "degrd","restr","rain1","season","rain365","septic")]
+d$y <- wq_data$lTN
+d <- d[!is.na(d$y),] #dim(d)[1] 2251 cf 2299 for wq_data
+#Centre the predictor to make search for intercept more efficient
+d$y <- d$y - (min(d$y) + diff(range(d$y))*0.5)
+dat <- list(N = nrow(d), N_site_no = length(unique(d$site_no)), y = d$y, 
+            site_no = d$site_no, degrd = d$degrd, restr = d$restr, 
+            rain1 = d$rain1, add1 = d$septic, add2 = d$season, add3 = d$rain365, t = d$t)
+fit_y_m_1ft_esr_int <- sampling(m_1ft_xxx_int, data=dat, iter=2000, warmup = 1000, 
+                    cores = 4, chains = nChains) 
+rm(m_1ft_xxx_int)
+y_pred <- as.data.frame(fit_y_m_1ft_esr_int, include = TRUE, pars = 'mu')
+y_pred_mean <- apply(y_pred, 2, mean)
+d$non_auto_resids <- d$y - y_pred_mean
+d$auto_t <- NA
+  for(j in 1:length(sites$sitecode)){
+    di <- d[d$sitecode == sites$sitecode[j],]
+    di <- di[order(di$date_time),]
+    for(k in 1:dim(di)[1]){
+    di$auto_t[k] <- 
+        mean(di$non_auto_resids[di$date_time >= di$date_time[k] - lubridate::days(45) & 
+                                   di$date_time < di$date_time[k]])
+    }
+    d$auto_t[match(di$samplecode,d$samplecode)] <- di$auto_t
+  }
+missing_index <- which(is.na(d$auto_t))
+no_missing_index <- which(!is.na(d$auto_t_y))
+d$auto_s <- NA  
+wq_dbs8 <- d$samplecode[d$sitecode == "DBS0008"]
+for(i in 1:length(wq_dbs8)){
+  if(sum(as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004") > 1) stop()
+  if(sum(as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004") == 1){
+  d$auto_s[d$samplecode == wq_dbs8[i]] <- 
+    d$non_auto_resids[as.Date(d$date_time) == as.Date(d$date_time)[d$samplecode == wq_dbs8[i]] & d$sitecode == "DBS0004"]
+  }
+}
+wq_lis4 <- d$samplecode[d$sitecode == "LIS0004"]
+wq_lis <- d[d$sitecode %in% c("LIS0004","LIS0001","LSN0001","LSS0001"),]
+wq_lis$date <- as.Date(wq_lis$date_time)
+wq_lis <- wq_lis[wq_lis$date > as.Date("2011-03-03"),]  #after tribs began to be sampled
+lis_dates <- unique(wq_lis$date)
+for(i in 1:length(lis_dates)){
+  if(sum(as.Date(d$date_time) == lis_dates[i] & d$sitecode == "LIS0004") > 1) stop()
+  if(sum(as.Date(d$date_time) == lis_dates[i] & d$sitecode == "LIS0004") == 1){
+    wq_lisi <- wq_lis[wq_lis$date == lis_dates[i] & wq_lis$sitecode != "LIS0004",]
+  d$auto_s[d$samplecode ==wq_lis$samplecode[wq_lis$date == lis_dates[i] & wq_lis$sitecode == "LIS0004"]] <- mean(d$non_auto_resids[as.Date(d$date_time) == lis_dates[i] & d$sitecode %in% c("LIS0001","LSN0001","LSS0001")])
+  }
+}
+auto_t <- d$auto_t; auto_t[is.na(auto_t)] <- 9999
+auto_s <- d$auto_s; auto_s[is.na(auto_s)] <- 9999
+dat$auto_t <- auto_t
+dat$auto_s <- auto_s
+dat$n_st_miss <- as.integer(sum(is.na(d$auto_s) & is.na(d$auto_t)))
+dat$n_s_miss <- as.integer(sum(is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$n_t_miss <- as.integer(sum(!is.na(d$auto_s) & is.na(d$auto_t)))
+dat$n_no_miss <- as.integer(sum(!is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$st_miss <- as.integer(which(is.na(d$auto_s) & is.na(d$auto_t)))
+dat$s_miss <- as.integer(which(is.na(d$auto_s) & !is.na(d$auto_t)))
+dat$t_miss <- as.integer(which(!is.na(d$auto_s) & is.na(d$auto_t)))
+dat$no_miss <- as.integer(which(!is.na(d$auto_s) & !is.na(d$auto_t)))
+save(dat, file = paste0(mod_dir, "data/data_tn_m_1ft_esr_int_st_p.rda"))
+```
+
+```{r eval = TRUE}
+load("data/data_tn_m_1ft_esr_int_st_p.rda")
+load(paste0(mod_dir, "compiled_models/wq_stan_m_1ft_xxx_int_st_p.rda"))
+new_Xi <- unique(new_X[c("degrd","restr","rain1","season","rain365","septic","t")])
+#set septic values for prediction to the six experimental sites
+site_septics <- unique(wq_data[c("sitecode","septic")])
+exp_sites$sitecode <- sites$sitecode[match(exp_sites$site, sites$cat)]
+exp_sites$septic <- site_septics$septic[match(exp_sites$sitecode,site_septics$sitecode)]
+for(s in 1:nrow(exp_sites)){
+  new_Xis <- new_Xi[new_Xi$restr  %in% c(0, exp_sites$max_restr[s]) & 
+                      new_Xi$degrd == exp_sites$degrd[s],]
+  new_Xis$septic <- exp_sites$septic[s]
+  new_Xi <- rbind(new_Xi, new_Xis)
+}
+new_Xi <- unique(new_Xi)
+new_X_by_wqvar$tn <- new_Xi
+dat$N2 <- dim(new_Xi)[1]
+dat$degrd_p <- new_Xi$degrd
+dat$restr_p <- new_Xi$restr
+dat$rain1_p <- new_Xi$rain1
+dat$add1_p <- new_Xi$septic
+dat$add2_p <- new_Xi$season
+dat$add3_p <- new_Xi$rain365
+dat$t_p <- new_Xi$t # near end of study
+# extract posterior predictions of mu for each data point
+fit_tn_m_1ft_esr_int_st_p <- sampling(m_1ft_xxx_int_st_p, data=dat, iter=2000, warmup = 1000, 
+                                cores = 4, chains = nChains)
+# check_hmc_diagnostics(fit_tn_m_1ft_esr_int_st_p)
+save(fit_tn_m_1ft_esr_int_st_p, 
+     file = paste0(mod_dir, "model_fits/fit_tn_m_1ft_esr_int_st_p.rda"))
+rm(y_pred, fit_tn_m_1ft_esr_int_st_p, m_1ft_xxx_int_st_p)
+gc() # garbage collection
+
+#save new_X matrices for making predictions in wq_methods_G
+save(new_X_by_wqvar, file = "data/new_X_by_wqvar.rda")
+```
