@@ -1,6 +1,6 @@
 ### Code and data for Walsh et al. (2022). "Dispersed urban-stormwater control improved stream water quality in a catchment-scale experiment"  
 
-This paper used hierarchical linear models to assess the effects of stormwater control measures dispersed across catchments on the water quality of downstream streams.  We developed models of total phosphorus, filterable reactive phosphorus, total nitrogen, nitrate + nitrite, ammonium, total suspended solids, electrical conductivity and temperature.
+This paper used hierarchical linear models (using Stan) to assess the effects of stormwater control measures dispersed across catchments on the water quality of downstream streams.  We developed models of total phosphorus, filterable reactive phosphorus, total nitrogen, nitrate + nitrite, ammonium, total suspended solids, electrical conductivity and temperature.
 
 `wq_manuscript.Rmd` and `wq_appendix_S1.Rmd` contain the source code (RMarkdown) for the manuscript and supplementary material, respectively. The seven `wq_methods_*.Rmd` documents contain the code for assembling the data, and compiling, selecting, sampling and interpreting the hierarchical linear models: their content is described in `wq_appendix_S1.Rmd`.
 
