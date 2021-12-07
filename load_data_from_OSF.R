@@ -19,8 +19,8 @@ guids <- c("xz8us","e7uxm","kcfrq")
 guids <- guids[!all_data_files %in% files_in_datadir]
 files <- all_data_files[!all_data_files %in% files_in_datadir]
 if (length(files) > 0) {
-  for (i in 1:length(gpkg_files))
+  for (i in 1:length(files))
     download.OSF.file(GUID = guids[i],
                       Access_Token = "https://osf.io/4ywvq/?view_only=d06f349882224ae6bd123b6f45145afd",
-                      file_name = gpkg_files[i], subdir = "data")
+                      file_name = files[i], subdir = "data")
 }
