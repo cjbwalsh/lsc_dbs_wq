@@ -91,11 +91,11 @@ in urban streams than in reference streams. This experiment strengthens the infe
 increases contaminant concentrations in urban streams, and demonstrates that such impacts are reversible and likely
 preventable. SCMs reduce contaminant concentrations by reducing the frequency and magnitude of uncontrolled drainage
 flows and augmenting reduced baseflows. Increased EC and reduced temperature are likely a result of increased
-contribution of groundwater to baseflows. The stormwater control achieved by the experiment did not return phosphorus or
-nitrogen concentrations to reference levels, but their responses indicate such an outcome is possible in dominant
-conditions (up to \~20 mm of antecedent rain). This would require nearly all impervious surfaces draining to SCMs with
-high retention capacity, thus requiring more downslope space and water demand. EI can predict response of stream water
-quality to SCMs, allowing better prioritization and SCM design standards for stream protection.
+contribution of groundwater to baseflows. The stormwater control achieved by the experiment did not fullly return
+phosphorus or nitrogen concentrations to reference levels, but their responses indicate such an outcome is possible in
+dominant conditions (up to \~20 mm of antecedent rain). This would require nearly all impervious surfaces draining to
+SCMs with high retention capacity, thus requiring more downslope space and water demand. EI can predict response of
+stream water quality to SCMs, allowing better prioritization and SCM design standards for stream protection.
 
 ## Introduction
 
@@ -904,43 +904,42 @@ The prediction of in-stream water quality as a function of *EI~S~* lends strengt
 successful restoration of urban streams [sensu @palmer2005] requires management intervention at a catchment scale to
 match the scale of the stormwater drainage impacts, rather than small-scale restoration of stream habitat
 [@bernhardt2011]. The relatively small effect on concentrations of the substantial channel excavation upstream of Ln
-(i.e. the channel effect) compared to the effects of SCMs further points to a relatively small influence of local
+(i.e. the *channel* effect) compared to the effects of SCMs further points to a relatively small influence of local
 disturbances compared to the catchment-scale disturbance of urban stormwater drainage.
 
-Restoration of water quality and flow regimes is a fundamental basis for restoration of ecological structure and
+Restoration of water quality and flow regime is a fundamental basis for restoration of ecological structure and
 function, and retention and treatment of stormwater is critical to achieving that. Our study has shown that
 appropriately designed SCMs applied at a range of scales can contribute predictably to restoring water quality (and
 through indirect evidence, dry-weather flows) in degraded urban streams. Because *EI~S~* integrates measures of SCM
-performance in its formulation [@WalshEtAl_2022], it can be used to assess the effects of potential SCM designs and
+performance in its formulation [@WalshEtAl_2021], it can be used to assess the effects of potential SCM designs and
 implementation strategies, to predict in-stream water quality responses and prioritize management actions.
 
-For example, the combination of large-scale harvesting and infiltration systems implemented in the Ln catchment were
-sufficient to reduce TP concentrations during dominant flow conditions, to a level sufficient to meet the Victorian
-Government environmental protection objective for TP (Fig. 3A). The potential for alternative SCM design to meet such an
-objective can be predicted by estimation of the resulting EIS . However, the less certain achievement of the TN
-objective (Fig. 3C) and the failure to meet the EC objective (Fig. 3G) further illustrate the complexity of urban
-impacts. In our study catchments, which were urbanized in the 1970s, but not sewered until \~20 years later, water
-quality responses to mitigation of stormwater impacts are complicated by legacy effects, particularly those of septic
-tanks.
+For example, the combination of large-scale harvesting and infiltration systems implemented in the Ln catchment was
+sufficient to reduce TP concentrations during dominant flow conditions, to meet the Victorian Government environmental
+protection objective for TP (Fig. 3A). The potential for alternative SCM design to meet such an objective can be
+predicted by estimation of the resulting EIS . However, the less certain achievement of the TN objective (Fig. 3C) and
+the failure to meet the EC objective (Fig. 3G) further illustrate the complexity of urban impacts. In our study
+catchments, which were urbanized in the 1970s, but not sewered until \~20 years later, water quality responses to
+mitigation of stormwater impacts are complicated by legacy effects, particularly those of septic tanks.
 
 Variation in nitrogen concentration, in particular its dominant form, NO~x~, among our study sites, including reference
 sites, was most strongly explained by septic tank density. Two of the reference sites had the highest septic tank
-density of all catchments (Table 1). Despite high septic density, and high NOx concentrations, the reference sites Sa
+density of all catchments (Table 1). Despite high septic density, and high NO~x~ concentrations, the reference sites Sa
 and Ol retained a high degree of ecological integrity: diverse invertebrate communities dominated by sensitive taxa
-[@walsh2004], leaf breakdown primarily mediated by shredder species [@imberger2008],low biomass algal assemblages
+[@walsh2004], leaf breakdown primarily mediated by shredder species [@imberger2008],low-biomass algal assemblages
 [@taylor2004] dominated by eutrophic species [@newall2005]. These biotic attributes of the reference streams, together
 with the low concentrations of reactive phosphorus (Fig 3B), suggest that phosphorus, rather than nitrogen, limits
-primary productivity, with little ecological effect of elevated nitrogen concentrations. The substantial reductions in P
-that were achieved by SCM implementation in Ln, Ls, L4 and D8 are therefore likely to influence ecological change in
-these study streams (the subject of ongoing study). Although SCM implementation reduced in-stream nitrogen
+primary productivity, with elevated nitrogen concentrations having little ecological effect. The substantial reductions
+in P that were achieved by SCM implementation in Ln, Ls, L4 and D8 are therefore likely to influence ecological change
+in these study streams (the subject of ongoing study). Although SCM implementation reduced in-stream nitrogen
 concentrations, further reductions, in urban and reference streams alike, will require retirement of septic tanks in
 these catchments.
 
-The elevated EC in urban catchments is likely to limit the colonization and persistence of some salt-sensitive species
-[e.g. @kefford2018], and the increase caused by SCM implementation is likely to exacerbate this limitation. Spatial
-variation in EI (*degrd*) explained some of the variation in EC (Fig. 2G, 3G), likely caused in part by elevated salt
-concentrations in impervious runoff from the leaching and weathering of built surfaces, particularly concrete
-[@kaushal2017]. However, the SCM-induced dry-weather increases in EC suggest elevated groundwater salinity, likely a
+The elevated EC in the urban study catchments is likely to limit the colonization and persistence of some salt-sensitive
+species [e.g. @kefford2018], and the increase caused by SCM implementation is likely to exacerbate this limitation.
+Spatial variation in EI (*degrd*) explained some of the variation in EC (Fig. 2G, 3G), likely caused in part by elevated
+salt concentrations in impervious runoff from the leaching and weathering of built surfaces, particularly concrete
+[@kaushal2017]. However, the SCM-induced, dry-weather increases in EC suggest elevated groundwater salinity, likely a
 legacy of historic septic tanks, but potentially a legacy of pre-urban agricultural activities as well. Infiltration of
 urban stormwater runoff (which is less saline, as evidenced by reduced EC with higher rainfall) into catchment soils is
 likely to result in long-term dilution of groundwater flows, over longer time frames than was possible in this study.
@@ -949,58 +948,61 @@ EC target.
 
 Such legacy effects, and indeed contemporary impacts such as inadequate sewage treatment and disposal [@piffer2021], are
 likely to be common in many urban catchments globally. Where problems such as inadequately treated sewage or industrial
-effluent are present, they should clearly be management priorities, however addressing such problems without recognition
+effluent are present, they should clearly be management priorities. However addressing such problems without recognition
 of the problem of stormwater misses an opportunity to more comprehensively restore stream ecological structure and
 function. Our study has demonstrated that stream water quality is impaired by small areas of conventionally drained
 impervious surfaces, and SCMs designed to retain and lose or treat stormwater runoff from all or near-all catchment
-impervious surfaces is required to mitigate such impairment to a level approaching the pre-urban state.
+impervious surfaces is required to mitigate such impairment to a level approaching the pre-urban state. While such an
+objective is likely to be challenging under dominant urban water management policy and practice, the potential
+co-benefits of alternative stormwater management can be large [@walsh2016].
 
 Protection and ecologically successful restoration of river and stream ecosystems are likely to require approaches to
 stormwater control beyond current dominant approaches [@walsh2016]. If river and stream protection is an objective, more
 ambitious targets are required than, for instance, those of most Mid-Atlantic municipalities, which have a goal of
 achieving 10--20% of the landscape drain runoff through SCMs by 2030 [@pennino2016]. Stream protection will require
 changing standard drainage practice so that conventional drainage is no longer the default. It will require near-100% of
-impervious surfaces draining to SCMs (noting that SCMs should be designed for interception of impervious runoff, not
-entire landscapes: @pennino2016). It will require SCMs in treatment trains at a range of scales to the scale of the
-largest subcatchment that enters a stream, and with the terminal treatment supported as much as possible by upstream
-treatments.
+impervious surfaces draining to SCMs (noting that SCMs should be designed for interception of runoff from impervious
+surfaces, not from entire landscapes: @pennino2016). It will require SCMs in treatment trains at a range of scales from
+land-parcel to the largest subcatchment that enters a stream, and with the terminal treatment supported as much as
+possible by upstream treatments.
 
 #### Table 2. A summary of degrading mechanisms relevant to our study streams, and evidence from this study for any mitigating effect of stormwater control measures.
 
-+-----------------------------------------------------------+-----------------------------------------------------------+
-| Degrading mechanism                                       | Mitigated by stormwater control measures                  |
-+===========================================================+===========================================================+
-| [**STORMWATER (degrd effect)**]{.ul}                      |                                                           |
-+-----------------------------------------------------------+-----------------------------------------------------------+
-| 1.  Dry weather spills or septic seepage to stormwater    | Yes: reduced dry-weather P, N                             |
-+-----------------------------------------------------------+-----------------------------------------------------------+
-| 2.  Frequent hydraulic and chemical disturbance from      | Yes: reduced P, N, temperature after up to 8 mm rain      |
-|     storm runoff                                          |                                                           |
-+-----------------------------------------------------------+-----------------------------------------------------------+
-| 3.  Reduced baseflows                                     | Yes: reduced dry-weather temperature (and increased EC)   |
-+-----------------------------------------------------------+-----------------------------------------------------------+
-| 4.  Incision and widening from increased stream power     | Unclear: lack of SCM impact on TSS suggests SCMs may not  |
-|                                                           | have mitigated this effect: in-channel vs. catchment      |
-|                                                           | sources need further investigation                        |
-+-----------------------------------------------------------+-----------------------------------------------------------+
-| 5.  Warmer, lighter in-stream conditions (resulting from  | Yes: reduced temperature                                  |
-|     3 and 4)                                              |                                                           |
-+-----------------------------------------------------------+-----------------------------------------------------------+
-| 6.  Loss of fine to coarse sediments (resulting from 4),  | No: no change in TSS                                      |
-|     perhaps leading to reduced TSS                        |                                                           |
-+-----------------------------------------------------------+-----------------------------------------------------------+
-| [**SEPTIC TANK/GREY WATER SEEPAGE (septic effect)**]{.ul} |                                                           |
-+-----------------------------------------------------------+-----------------------------------------------------------+
-| 1.  To stormwater drains                                  | Yes: reduced N                                            |
-+-----------------------------------------------------------+-----------------------------------------------------------+
-| 2.  To groundwater                                        | Possibly: reduced N                                       |
-+-----------------------------------------------------------+-----------------------------------------------------------+
-| [**CLIMATE CHANGE (time effect)**]{.ul}                   |                                                           |
-+-----------------------------------------------------------+-----------------------------------------------------------+
-| 1.  Potential reduced dry weather flows                   | Yes: reduced dry-weather temperature, increased EC        |
-+-----------------------------------------------------------+-----------------------------------------------------------+
-| 2.  Warming                                               | Yes: reduced temperature                                  |
-+-----------------------------------------------------------+-----------------------------------------------------------+
++----------------------------------------------------------+----------------------------------------------------------+
+| Degrading mechanism                                      | Mitigated by stormwater control measures                 |
++==========================================================+==========================================================+
+| [**STORMWATER (degrd effect)**]{.ul}                     |                                                          |
++----------------------------------------------------------+----------------------------------------------------------+
+| 1.  Dry weather spills or septic seepage to stormwater   | Yes: reduced dry-weather P, N                            |
++----------------------------------------------------------+----------------------------------------------------------+
+| 2.  Frequent hydraulic and chemical disturbance from     | Yes: reduced P, N, temperature after up to 8 mm rain     |
+|     storm runoff                                         |                                                          |
++----------------------------------------------------------+----------------------------------------------------------+
+| 3.  Reduced baseflows                                    | Yes: reduced dry-weather temperature (and increased EC)  |
++----------------------------------------------------------+----------------------------------------------------------+
+| 4.  Incision and widening from increased stream power    | Unclear: lack of SCM impact on TSS suggests SCMs may not |
+|                                                          | have mitigated this effect: in-channel vs. catchment     |
+|                                                          | sources need further investigation                       |
++----------------------------------------------------------+----------------------------------------------------------+
+| 5.  Warmer, lighter in-stream conditions (resulting from | Yes: reduced temperature                                 |
+|     3 and 4)                                             |                                                          |
++----------------------------------------------------------+----------------------------------------------------------+
+| 6.  Loss of fine to coarse sediments (resulting from 4), | No: no change in TSS                                     |
+|     perhaps leading to reduced TSS                       |                                                          |
++----------------------------------------------------------+----------------------------------------------------------+
+| [**SEPTIC TANK/GREY WATER SEEPAGE (septic                |                                                          |
+| effect)**]{.ul}                                          |                                                          |
++----------------------------------------------------------+----------------------------------------------------------+
+| 1.  To stormwater drains                                 | Yes: reduced N                                           |
++----------------------------------------------------------+----------------------------------------------------------+
+| 2.  To groundwater                                       | Possibly: reduced N                                      |
++----------------------------------------------------------+----------------------------------------------------------+
+| [**CLIMATE CHANGE (time effect)**]{.ul}                  |                                                          |
++----------------------------------------------------------+----------------------------------------------------------+
+| 1.  Potential reduced dry weather flows                  | Yes: reduced dry-weather temperature, increased EC       |
++----------------------------------------------------------+----------------------------------------------------------+
+| 2.  Warming                                              | Yes: reduced temperature                                 |
++----------------------------------------------------------+----------------------------------------------------------+
 
 ## Acknowledgements
 

@@ -9,8 +9,6 @@ output:
     reference_docx: officedown_template.docx
 csl: ecol-app.csl
 bibliography: lsc_dbs_wq.bib
-nocite: |
-  @APHA_2005_frp, @APHA_2005_nh3, @APHA_2005_ec, @APHA_2005_nox, @APHA_2005_tss, @hosomi1986 
 editor_options: 
   markdown: 
     wrap: 120
@@ -25,7 +23,7 @@ lapply(requiredPackages, require, character.only = TRUE, quietly = TRUE)
 # Bespoke functions used in the document (table_for_word(),)
 source("code/misc_functions.R")  
 # Check all files on OSF are in data directory - if not download them
-source("code/load_data_from_OSF.R")
+source("load_data_from_OSF.R")
 ```
 
 ## Introduction
