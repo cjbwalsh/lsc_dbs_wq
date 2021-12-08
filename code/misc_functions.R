@@ -267,8 +267,8 @@ counter_restr_rain <- function(response_var, #string of stan fit object name
                                xaxis_labs = TRUE, yaxis_labs = TRUE,show_SEPP = FALSE){
   vars <- data.frame(y = c("lTP","lFRP","lTN","lNH3","sNOx","lTem","sEC","lTSS"),
                      var = c("tp","frp","tn","nh3","nox","tem","ec","tss"))
-  ylab_expressions <- list(tp = expression(bold(paste("Total P (", mu, "g P/L)"))),
-                           frp = expression(bold(paste("FRP (", mu, "g P/L)"))),
+  ylab_expressions <- list(tp = expression(bold(paste("Total P (mg P/L)"))),
+                           frp = expression(bold(paste("FRP (mg P/L)"))),
                            tn = expression(bold(paste("Total N (mg N/L)"))),
                            nh3 = expression(bold(paste("NH"[4]^+{}, " (", mu, "g N/L)"))),
                            nox = expression(bold(paste("NO"[x], "(mg N/L)"))),
