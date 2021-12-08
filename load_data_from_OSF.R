@@ -14,8 +14,9 @@
 source("code/download.OSF.file.R")
 # Check if all relevant spatial files have been downloaded: if not download them
 files_in_datadir <- dir(here::here("data"))
-all_data_files <- c("wq_data_compiled.xlsx", "prediction_set.xlsx", "oe_list_8vars.rda")
-guids <- c("xz8us","e7uxm","kcfrq")
+all_data_files <- c("wq_data_compiled.xlsx", "prediction_set.xlsx", "oe_list_8vars.rda",
+                    "figS1-2_data.rda")
+guids <- c("xz8us","e7uxm","kcfrq","5c8qe")
 guids <- guids[!all_data_files %in% files_in_datadir]
 files <- all_data_files[!all_data_files %in% files_in_datadir]
 if (length(files) > 0) {
