@@ -19,8 +19,8 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE,
                       message = FALSE, error = FALSE)
 require("rstan")
 # Check all files on OSF are in data directory - if not download them
-source("code/load_data_from_OSF.R")
-rstan_options(auto_write = TRUE)
+source("load_data_from_OSF.R")
+rstan::rstan_options(auto_write = TRUE)
 # Set a directory for storing the (large) model objects: 
 # I used a directory on a network drive
 # (the directory needs three sub-directories: data, model_fits and compiled_models)

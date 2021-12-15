@@ -1,7 +1,7 @@
 ---
 title: "Dispersed urban-stormwater control improved stream water quality in a catchment-scale experiment"
 author:
-  - Christopher J Walsh, Sam J Imberger, Matthew J Burns, Darren G Bos, and Tim D Fletcher
+  - Christopher J. Walsh, Sam J. Imberger, Matthew J. Burns, Darren G. Bos, and Tim D. Fletcher
 date: "School of Ecosystem and Forest Sciences, The University of Melbourne, 500 Yarra Boulevard, Burnley, 3121 Victoria, Australia"
 output:   
   word_document:
@@ -25,7 +25,7 @@ source("code/misc_functions.R")
 source("https://tools.thewerg.unimelb.edu.au/documents/misc/bugDatabaseFunctions.R")
 #used for table_for_word function
 # Check all files on OSF are in data directory - if not download them
-source("code/load_data_from_OSF.R")
+source("load_data_from_OSF.R")
 sites <- data.frame(readxl::read_excel("data/wq_data_compiled.xlsx", 
                                          sheet = "sites"), stringsAsFactors = FALSE)
 wq_data <- data.frame(readxl::read_excel("data/wq_data_compiled.xlsx", 
@@ -75,47 +75,51 @@ mod_summ <- read.csv("data/mod_summ.csv")
 ## Abstract
 
 Traditional approaches to urban drainage degrade receiving waters. Alternative approaches have potential to protect
-downstream waters and provide other benefits to cities, including greater water security. Their adoption requires robust
-demonstration of their feasibility and effectiveness. We conducted a catchment-scale,
+downstream waters and provide other benefits to cities, including greater water security. Their widespread adoption
+requires robust demonstration of their feasibility and effectiveness. We conducted a catchment-scale,
 before-after-control-reference-impact experiment to assess the effect of dispersed stormwater control on stream
 ecosystems. We used a variant of effective imperviousness (EI), integrating catchment-scale stormwater runoff impact and
-stormwater control measure (SCM) performance, as the measure of experimental effect. We assessed the response of water
-quality variables in 6 sites on 2 streams with in-catchment SCMs implemented, contrasting changes over 7 years with
-increasing SCM implementation to the 12 preceding years, and over the 19 years in 3 reference and 2 control streams.
-SCMs reduced phosphorus and nitrogen concentrations and temperature, and increased electrical conductivity; most
-strongly in dry weather, with reduced effect sizes following increasingly large rain events. SCM-induced reductions in
+stormwater-control-measure (SCM) performance, as the measure of experimental effect. We assessed the response of water
+quality variables in 6 sites on 2 streams, following SCM implementation in their catchments. We compared changes in
+those streams over 7 years, as SCM implementation increased, to the 12 preceding years, and over the 19 years in 3
+reference and 2 control streams. SCMs reduced phosphorus and nitrogen concentrations and temperature, and increased
+electrical conductivity; with effect size negatively correlated with antecedent rain. SCM-induced reductions in
 phosphorus and temperature were of a similar magnitude to increases from urban development, when assessed as a function
-of change in EI. Nitrogen reductions were observed, even though increased concentrations were not correlated with EI,
-and are more influenced by septic tank seepage. SCMs had no effect on suspended solids concentrations, which were lower
-in urban streams than in reference streams. This experiment strengthens the inference that urban stormwater drainage
+of change in EI. Nitrogen reductions were observed, even though concentrations among sites were not correlated with EI,
+being more influenced by septic tank seepage. SCMs had no effect on suspended solids concentrations, which were lower in
+urban streams than in reference streams. This experiment strengthens the inference that urban stormwater drainage
 increases contaminant concentrations in urban streams, and demonstrates that such impacts are reversible and likely
 preventable. SCMs reduce contaminant concentrations by reducing the frequency and magnitude of uncontrolled drainage
 flows and augmenting reduced baseflows. Increased EC and reduced temperature are likely a result of increased
-contribution of groundwater to baseflows. The stormwater control achieved by the experiment did not fullly return
+contribution of groundwater to baseflows. The stormwater control achieved by the experiment did not fully return
 phosphorus or nitrogen concentrations to reference levels, but their responses indicate such an outcome is possible in
-dominant conditions (up to \~20 mm of antecedent rain). This would require nearly all impervious surfaces draining to
-SCMs with high retention capacity, thus requiring more downslope space and water demand. EI can predict response of
-stream water quality to SCMs, allowing better prioritization and SCM design standards for stream protection.
+dominant conditions (up to \~20 mm of 24-h antecedent rain). This would require nearly all impervious surfaces draining
+to SCMs with large retention capacity, thus requiring more downslope space and water demand. EI predicts stream water
+quality responses to SCMs, allowing better catchment prioritization and SCM design standards for stream protection.
+
+*Key words: river water quality, concentration, nitrogen, phosphorus, temperature, electrical conductivity, urban
+stormwater, stormwater control measure, watershed management, catchment management, urban water management, stream
+restoration*
 
 ## Introduction
 
 As the global human population has grown, associated demands on fresh water, and alteration to the world's lands, have
 resulted in growing water scarcity and declining water quality that threaten human societies and the freshwater
 ecosystems on which they depend [@vörösmarty2010]. Cities and towns are the foci of such impacts, driving land use
-activities and degrading ecosystems well beyond their boundaries to feed and water their populations, and to build and
-operate their activities and infrastructure [@grimm2008]. Within their boundaries, conventional approaches to urban
-water management degrade rivers and streams. Streams of urban catchments are typified by flashy flow regimes, incised
-and deepened channels and compromised water quality leading to shifts in their ecological structure and function
+activities and degrading ecosystems well beyond their boundaries, in order to feed and water their populations, and to
+conduct their activities and build infrastructure [@grimm2008]. Within their boundaries, conventional approaches to
+urban water management degrade rivers and streams. Streams of urban catchments are typified by flashy flow regimes,
+incised and deepened channels and compromised water quality leading to shifts in their ecological structure and function
 [@WalshRoyEtAl_2005]. Regionally, the impacts of urban land use on river water quality can be disproportionately large
 [e.g. @piffer2021]. However, alternative land and water management practices have the potential to protect downstream
 waters and provide many co-benefits to the world's cities, including greater water supply security [@walsh2016]. Their
 adoption for stream protection and restoration depends on robust demonstration of their feasibility and effectiveness.
 
 Urban lands alter the water balance of catchments by replacing vegetated land with impervious surfaces, such as roofs
-and roads, which reduce infiltration and are usually efficiently drained to permit rapid routing of runoff to downstream
-waters [@walsh2012]. Depending on the nature of local urban water infrastructure, these urban stormwater drainage
-effects may be exacerbated by wastewater discharges, by extraction of water from streams or aquifers that flow to them,
-or by channel engineering to mitigate flooding. However, even in the absence of such compounding factors, urban
+and roads, which reduce rain-water infiltration and are usually efficiently drained to permit rapid routing of runoff to
+downstream waters [@walsh2012]. Depending on the nature of local urban water infrastructure, these urban stormwater
+drainage effects may be exacerbated by wastewater discharges, by extraction of water from streams or aquifers that flow
+to them, or by channel engineering to mitigate flooding. However, even in the absence of such compounding factors, urban
 stormwater drainage remains a degrading influence on stream ecosystems and their water quality, increasing the frequency
 and magnitude of polluted flows. This is because conventional stormwater drainage [sensu @burns2012] greatly increases
 the likelihood that sediments or other materials, and their associated pollutants, on urban surfaces will be carried to
@@ -123,7 +127,7 @@ the stream when it rains, or that a spill on an impervious surface anywhere in a
 down a drain, a car washed on a street, firefighting runoff) will flow to a stream even in dry weather. The resulting
 pulses of polluted flow create frequent hydraulic and chemical disturbances to in-stream communities
 [@WalshRoyEtAl_2005]. The range of urban activities and materials, together with the efficient hydraulic connection
-between catchment and stream, result in the delivery of a remarkably diverse cocktail of pollutants to stream ecosystems
+between catchment and stream, result in the delivery of a diverse cocktail of pollutants to stream ecosystems
 [@kaushal2020].
 
 Partly in response to a growing awareness of these impacts, alternative drainage approaches designed to reduce the
@@ -145,7 +149,7 @@ measures [SCMs: e.g. @bratieres2008; @bettez2012], and of the cumulative effects
 treating runoff to reduce runoff volume and pollutant loads. Studies of larger-scale cumulative effects of SCMs on
 stream ecosystems have been less common, with mixed results that are difficult to compare. The difficulty of comparison
 arises in part from a lack of standard methods for measuring cumulative performance of the diverse forms and scales of
-SCMs compared to the cumulative impact of urban drainage [@WalshEtAl_2021]. The relative rarity of such studies is in
+SCMs compared to the cumulative impact of urban drainage [@WalshEtAl_2022]. The relative rarity of such studies is in
 part a result of the challenges of conducting the necessarily long-term, large-scale experiments required to robustly
 assess the effects of SCMs on stream ecosystems.
 
@@ -159,7 +163,7 @@ total catchment area upstream of SCMs [@pennino2016], or by SCM area as a propor
 Other studies have accounted for stormwater control afforded by informal drainage to impervious surfaces either using
 imperviousness weighted by distance to drain [@walsh2009], or by stormwater pipe density [@baruch2018].
 
-In this study, we used the approach outlined by @WalshEtAl_2021 of integrating the degrading effects of stormwater
+In this study, we used the approach outlined by @WalshEtAl_2022 of integrating the degrading effects of stormwater
 runoff and the restorative effects of SCMs into two comparable measures: *EI~S1~*, the proportion of catchment connected
 to stormwater drainage pipes assuming stormwater control measures have no effect; and *EI~S~*, EI weighted by the
 stormwater impact index, which measures the cumulative modeled performance of upstream SCMs. Such an approach permits
@@ -168,39 +172,37 @@ respectively. It also presents an approach that could be applied across regions 
 studies.
 
 We use these EI measures to assess the effects on stream water quality of the experimental implementation of dispersed
-SCMs in 6 subcatchments of 2 independent catchments. The experiment was designed as a before-after-control-reference
+SCMs in 6 sub-catchments of 2 independent catchments. The experiment was designed as a before-after-control-reference
 impact experiment conducted over 19 years, comparing changes in the 6 experimental reaches in the 7 years during and
-after SCM implemention with changes in the preceding 12 years, and with changes over the full study period in streams of
-2 urban control and 3 forested reference catchments. More broadly, the experiment aimed to test if intensive application
-of dispersed SCMs can restore stream hydrology, water quality and ultimately ecological state [@walsh2005; @walsh2015].
-In this paper we focus on water quality.
+after SCM implementation with changes in the preceding 12 years, and with changes over the full study period in streams
+of 2 urban control and 3 forested reference catchments. More broadly, the experiment aimed to test if intensive
+application of dispersed SCMs can restore stream hydrology, water quality and ultimately ecological state [@walsh2005;
+@walsh2015]. In this paper we focus on water quality.
 
 Most studies assessing the water quality effects of SCMs focus on annual loads, primarily to assess export to well
 buffered large downstream waters. Such long-time-scale measures of water quality are of less direct relevance to
-smaller, more dynamic stream and river ecosystems [@gomi2002]. We therefore assess the effects on water quality
-concentrations during dominant conditions: in dry weather and following rain events up to 20 mm/d. Such conditions occur
-\>96% of the time in our study streams, and are therefore likely to be prime determinants of ecological structure and
-function. Dispersed SCMs are typically not designed to retain and treat runoff from storms larger than \~20 mm/d. 
-Rainfall depths of this magnitude are likely to exceed the runoff retention capacity of even natural catchments in this
-region [@hill1998], meaning that both urban and non-urban streams will experience hydraulic and water quality
-disturbance in such rainfalls.
+smaller, more dynamic stream and river ecosystems [@gomi2002]. We therefore assess the effects on water quality during
+dominant conditions: in dry weather and following rain events up to 20 mm/d. Such conditions occur \>96% of the time in
+our study streams, and are therefore likely to be prime determinants of ecological structure and function. Dispersed
+SCMs are typically not designed to retain and treat runoff from storms larger than \~20 mm/d.  Rainfall depths of this
+magnitude are likely to exceed the runoff retention capacity of even natural catchments in this region [@hill1998],
+meaning that both urban and non-urban streams will experience hydraulic and water quality disturbance in such rainfalls.
 
-Comprehensively accounting for the multitude of urban contaminants that comprise urban stormwater impacts on urban water
-quality is a near-impossible endeavour [@kaushal2020]. We thus follow the approach implicit in most legislated water
-quality targets of measuring variables that are nutrients of primary importance to biological processes and in forms
-with varying degrees of availability; from less bioavailable (i.e. total nitrogen, TN; total phosphorus, TP) to more
-bioavailable (ammonium, NH~4~^+^; nitrate + nitrite, NO~x~; filterable reactive phosphorus FRP). The variables measured
-can serve as surrogates for contaminants that are mobile through soils and bioavailable (NO~x~) or conservative
-(electrical conductivity, EC, as a surrogate for dominant ions), or that are bioavailable and readily attach to
-particles (FRP, NH~4~^+^), and . We also measured the particles themselves (TSS), and temperature as a fundamental
+Comprehensively accounting for the multitude of urban contaminants that are responsible for urban stormwater impacts on
+urban water quality is a near-impossible endeavor [@kaushal2020]. We thus follow the approach implicit in most
+legislated water quality targets of measuring variables that are nutrients of primary importance to biological processes
+and in forms with varying degrees of availability; from less bioavailable (i.e. total nitrogen, TN; total phosphorus,
+TP) to more bioavailable (ammonium, NH~4~^+^; nitrate + nitrite, NO~x~; filterable reactive phosphorus FRP). The
+variables measured can serve as surrogates for contaminants that are mobile through soils and bioavailable (NO~x~) or
+conservative (electrical conductivity, EC, as a surrogate for dominant ions), or that are bioavailable and readily
+attach to particles (FRP, NH~4~^+^). We also measured the particles themselves (TSS), and temperature as a fundamental
 physical property driving in-stream biological processes.
 
-In this paper, we thus use hierarchical linear models to assess the effects of the experimental implementation of
-dispersed SCMs on the concentrations of the selected water quality variables, and EC and temperature in receiving
-streams. The experimental design permits us to use the models to make general predictions of the effects of conventional
-urban stormwater as indicated by *EI~S1~*, and of varying density and performance of stormwater control as indicated by
-*EI~S~*. The predictions will permit better planning and implementation of stormwater control at a catchment-scale for
-protection of streams and rivers.
+In this paper, we use hierarchical linear models to assess the effects of the experimental implementation of dispersed
+SCMs on the selected water quality variables in receiving streams. The experimental design permits us to use the models
+to make general predictions of the effects of conventional urban stormwater as indicated by *EI~S1~*, and of varying
+density and performance of stormwater control as indicated by *EI~S~*. The predictions will permit better planning and
+implementation of stormwater control at a catchment-scale for protection of streams and rivers.
 
 ## Methods
 
@@ -272,18 +274,18 @@ sampling occasion to ensure samples from each site were taken at a range of time
 We recorded EC with a TPS Direct Reading Conductivity Meter Model 2100 (<https://tps.com.au/>) and temperature with a
 'H~2~O' water quality multiprobe (<https://www.hydrolab.com/>) in 2001-2002, and both variables using a Horiba U-10
 multiprobe (<https://www.horiba.com/>) or a YSI 6920 V2 multiprobe (<https://www.ysi.com/>) thereafter. We collected
-samples for TN, TP, NO~x~, NH~4~^+^,filterable reactive phosphorus (FRP) and total suspended solids (TSS). Samples for
-NO~x~, NH~4~^+^, and FRP, only collected from 2004, were filtered in the field using 0.2 μm filters up to 2003 and 0.45
-μm filters thereafter. This change of filter type was inconsequential: see consideration of the filter predictor below.
-All bottles were stored on ice until returned to the laboratory (\< 5 h). All analyses were performed in a NATA
-(National Association of Testing Authorities, <https://nata.com.au/>) accredited laboratory following standard methods
+samples for TN, TP, NO~x~, NH~4~^+^, filterable reactive phosphorus (FRP) and total suspended solids (TSS). Samples for
+NO~x~, NH~4~^+^, and FRP were filtered in the field using 0.2 μm filters from 2001 to 2003, and 0.45 μm filters
+thereafter. This change of filter type was inconsequential: see consideration of the *filter* predictor below. All
+bottles were stored on ice until returned to the laboratory (\< 5 h). All analyses were performed in a NATA (National
+Association of Testing Authorities, <https://nata.com.au/>) accredited laboratory following standard methods
 [@APHA_2012_all].
 
 Very few records were below detection limit. Two FRP values (\<0.1% of all FRP records), 8 NO~x~ values (0.4%), and 11
 NH~4~^+^ values (0.5%) were less than the detection limit of 0.001 mg/L. No TN values were less than the detection limit
 of 0.2 mg/L, 19 TP values (0.8%) were less than the detection limit of 0.1 mg/L and 1 TSS value (\<0.1%) was less than
-the detection limit of 0.5 mg/L. For all variables, below-detection-limit records were set at 0.5 times the detection
-limit in the statistical models.
+the detection limit of 0.5 mg/L. For all variables, below-detection-limit records were set at half the detection limit
+in the statistical models.
 
 Determination of impervious areas, drainage connection, and SCM implementation and performance over the study period,
 used to calculate EI-related predictor variables, was described in detail by Walsh et al. (2021). Rainfall predictor
@@ -295,12 +297,12 @@ different periods in the L4 and D8 catchments), and the Bureau of Meteorology da
 Appendix S3 for a detailed description of the methods used to calculate catchment-weighted averages). Septic tank
 density was estimated from a dataset of unsewered properties supplied by Yarra Ranges Council in 2000, and South-East
 Water for the D4 catchment in 2016. These data are likely to be reliable for the study period as there were no sewer
-upgrades in the study catchments.
+upgrade programs in the study catchments.
 
 ### Statistical analyses
 
 For each of the eight water quality variables (FRP, TP, NO~x~, NH~4~^+^, TN, TSS, EC and temperature) we assessed the
-effect of dispersed stormwater control measures using a hierarchical linear model as described by @WalshEtAl_2021. The
+effect of dispersed stormwater control measures using a hierarchical linear model as described by @WalshEtAl_2022. The
 two primary stormwater-related effects of the model are:
 
 -   *degrd*, the putative degrading effect of urban stormwater runoff, represented by log~10~(*EI~S1~* + 0.1), where
@@ -310,11 +312,11 @@ two primary stormwater-related effects of the model are:
     log~10~(*EI~S1~* + 0.1) and log~10~(*EI~S~* + 0.1), where *EI~S~* is effective imperviousness, with impervious areas
     upstream of stormwater control measures weighted by S, a metric of performance. S measures reduction in uncontrolled
     runoff frequency, runoff volume, and contaminant concentrations, and restoration of filtered flows: see
-    @WalshEtAl_2021
+    @WalshEtAl_2022
 
 In the before phase of the experiment (2001 to 2009), the six experimental sites had *EI~S1~* values spanning the range
-of *EI~S1~* betwen the control sites and reference sites. In all but two sites (the reference sites Ly and Ol, Table 1),
-*EI~S1~* increased over the study period, but this growth in imperviousness was small in the log domain (Fig. 1).
+of *EI~S1~* between the control sites and reference sites. In all but two sites (the reference sites Ly and Ol, Table
+1), *EI~S1~* increased over the study period, but this growth in imperviousness was small in the log domain (Fig. 1).
 $\Delta EI_S$ was zero for the entire study period for the reference and control sites, and for the experimental sites
 in the before phase. It became increasingly negative after the stormwater control measures began being implemented. If
 the stormwater control measures completely mitigated the effect of urban stormwater runoff, then the *degrd* (*EI~S1~*
@@ -353,10 +355,10 @@ and $\sigma$ is the residual standard deviation. To approximate such a distribut
 temperature were log~10~-transformed, and NO~x~ and EC were square-root transformed.
 
 The basic model assessing the effects of *degrd* and *restr* in the before-after-control-reference-impact experiment
-[@WalshEtAl_2021] estimated $\mu_i$ as:
+[@WalshEtAl_2022] estimated $\mu_i$ as:
 
 $$
-\mu_i = \alpha + \alpha [site_j] + \beta_D degrd_i + \beta_R restr_i + \beta_{T}[site_j] t_i + \beta_A at_i
+\mu_i = \alpha + \alpha [site_j] + \beta_D degrd_i + \beta_R restr_i + \beta_{T}[site_j] t_i + \beta_A autoT_i
 $$
 
 (eq. 2)
@@ -364,7 +366,7 @@ $$
 where $\alpha$ is the global intercept; $\alpha [site_j]$ is the random variation to that intercept for site \*j\*;
 $\beta_D$ represents the effect of \*degrd\*; $\beta_R$ represents the effect of \*restr\* (only non-zero in
 experimental sites after SCM manipulation had begun); $\beta_{T}[site_j]$ represents the effect of time, t, within the
-site \*j\*; $\beta_A$ represents the effect of temporal autocorrelation, \*at\*, among samples from each site. We thus
+site \*j\*; $\beta_A$ represents the effect of temporal autocorrelation, *autoT*, among samples from each site. We thus
 modeled a random effect of site in the intercept and in the slopes of the time effects (allowing for different trends
 over time among sites unrelated to the experimental effect), but fixed effects of *degrd* and *restr* . However, models
 of temperature, NO~x~ and TN did not consistently converge with a variable time effect, and as the time effect was
@@ -387,14 +389,14 @@ well as the interactions of *rain1* with *degrd*, and with *restr*, on the premi
 drainage and SCMs will likely vary with depth of rainfall events.
 
 Our study design included sites with spatial dependence: L1, Ln, and Ls are 1.7, 1.7 and 1.4 stream-km upstream of L4,
-respectively, and D4 is 0.9 stream-km upstream of D8. We thus also included a random spatial autocorrelation term,
-*autoS*, in all models, which was applied to samples from L4 and D8. *autoS* was the mean of values recorded in L1, Ln,
-and Ls on the same date for L4, and the value recorded in D4 on the same date for D8.
+respectively, and D4 is 0.9 stream-km upstream of D8. We thus also included a spatial autocorrelation term, *autoS*, in
+all models, which was applied to samples from L4 and D8. *autoS* was the mean of values recorded in L1, Ln, and Ls on
+the same date for L4, and the value recorded in D4 on the same date for D8.
 
 The primary model of each variable (for which the time effect varied among sites) was thus:
 
 $$
-\mu_i = \alpha + \alpha [site_j] + \beta_D degrd_i + \beta_R restr_i + \beta_p * rain1_i + \beta_{pd} * rain1_i * degrd_i + \beta_{pr} * rain1_i * restr_i + \beta_{t}[site_j] t_i + \beta_{at} autoT_i + \beta_{as} * autoS_i 
+\mu_i = \alpha + \alpha [site_j] + \beta_D degrd_i + \beta_R restr_i + \beta_p * rain1_i + \beta_{pd} (rain1_i * degrd_i) + \beta_{pr} (rain1_i * restr_i) + \beta_{t}[site_j] t_i + \beta_{at} autoT_i + \beta_{as} autoS_i 
 $$
 
 (eq. 3) <!--# (Model m_1_st) -->
@@ -403,7 +405,7 @@ We aimed to ensure that each model adequately accounted for sources of variation
 manipulation. We therefore calculated and compared the primary model to a range of more complex models. For each
 variable, we added up to three additional predictors to the primary model, and improvement in model fit was assessed by
 differences in the leave-one-out estimate of out-of-sample predictive fit (ELPD~loo~: @Vehtari_EtAl_2017) to select the
-best-fit model for each response variable. Additional variables included were:
+best-fit model for each response variable. Additional variables included in candidate models were:
 
 -   *season*, a sinusoidal curve with a period of 1 year, a maximum of 1 on the summer solstice (December 21) and a
     minimum of -1 on the winter solstice. This variable represents seasonal changes in climate and instream biological
@@ -414,10 +416,10 @@ best-fit model for each response variable. Additional variables included were:
     all variables as an additional term $\beta{r365} * rain365$.
 
 -   *channel*, which was zero for all samples, except for samples from L4 and Ln for two years after 300 m of vegetated
-    channel and banks were scraped by the local waterway/floodplain management authority, resulting in liberation of
-    fine sediments \~ 300 m upstream of Ln. The variable represents the potential for the exposed sediments to mobilise
-    contaminants during the period that channel vegetation returned. We included this variable in candidate models of
-    FRP, TP, NO~x~, NH~4~^+^, TN, and TSS as an additional term $\beta{c} * channel$.
+    channel and banks, \~ 300 m upstream of Ln, were disturbed by mechanical re-profiling and vegetation removal,
+    resulting in liberation of fine sediments. The variable represents the potential for the exposed sediments to
+    mobilize contaminants during the period that channel vegetation returned. We included this variable in candidate
+    models of FRP, TP, NO~x~, NH~4~^+^, TN, and TSS as an additional term $\beta{c} * channel$.
 
 -   *diel*, a sinusoidal curve with a period of 1 day, a maximum of 1 at 1800 h, when stream temperature is likely to be
     at its daily maximum, and minimum of -1 as 0600 h. This variable was only applied to models of temperature as an
@@ -448,7 +450,7 @@ Combining the additional variables (other than *filter*) with the primary model 
 models for FRP, TP, NO~x~, NH~4~^+^, TN, and TSS (primary model plus combinations of *channel*, *season*, *rain365*), 16
 models for NO~x~ and TN (additional 8 models including *septic* with and without an interaction with *rain1*), 4 models
 for EC (primary model plus combinations of *season* and *rain365*), and 6 models for temperature (primary model plus
-*season* and *diel* and combinations of *rain365* and interactions as described above). See appendix 1, Table S1-1, for
+*season* and *diel* and combinations of *rain365* and interactions as described above). See Appendix S1: Table S1, for
 the full list of models.
 
 All $\alpha$ and $\beta$ parameters were drawn from a weakly informative normal distribution (mean 0, standard deviation
@@ -456,7 +458,7 @@ All $\alpha$ and $\beta$ parameters were drawn from a weakly informative normal 
 drawn from a normal distribution with mean 0 and standard deviation 5, and standard deviation drawn from a half-Cauchy
 distribution (mean 0, standard deviation 2). We derived the models using the Markov Chain Monte-Carlo sampler of Stan
 [@CarpenterEtAl_2017], ensuring standard diagnostic tests of model performance were satisfied, and that each model
-provided accurate predictions of the data. See appendix S1 for further details and code.
+provided accurate predictions of the data. See Appendix S1 for further details.
 
 ### Model prediction for assessment of stormwater control effects
 
@@ -467,13 +469,13 @@ variable to a range of predictor variables by setting site-specific random param
 We first explored the primary effects of interest (*restr*, *degrd* and *rain1*) and their interactions, first by
 comparing the response of each variable to rain1 under three scenarios:
 
-a)  a stream with EI~S1~ equivalent to each experimental site at the end of the study, with no stormwater control
+a)  a stream with *EI~S1~* equivalent to each experimental site at the end of the study, with no stormwater control
     measures (i.e. each site as it would be without SCM implementation);
 
 b)  a stream as in a), but with the stormwater control measures achieved in that catchment at the end of the study (i.e.
     each site as it was after SCM implementation);
 
-c)  a reference stream (zero EI~S1~ , zero SCMs).
+c)  a reference stream (zero *EI~S1~*, zero SCMs).
 
 For all scenarios for all variables, where relevant, *season* was set to the equinox, except for temperature, for which
 season was set to the summer solstice and *diel* to 1800 h (i.e. their maximum values); *rain365* to its mean value;
@@ -486,7 +488,7 @@ In those contexts we predicted responses to combinations of a range of *degrd* v
 SCM implementation) achieved in each site; a range of rain1 values, including 0, 2 and 8 mm (the 50th, 75th, and 90th
 percentile rain1 values for all days between 2001 and 2019) and 20 mm (the typical maximum storage of installed SCMs).
 They thus represent dominant conditions. The 75th percentile is of particular importance because regional water quality
-concentration objectives for TP, TN and EC are set to the 75th percentile concentration [@GovVic_2018]. To assess the
+concentration objectives for TP, TN and EC are set to the 75th percentile concentration [@epavic2021]. To assess the
 potential for SCM implementation to meet these management targets, we compared predicted concentrations of these
 variables for the 75th percentile rainfall to the relevant objectives for our study streams (Central foothills and
 coastal plains, Yarra lowlands).
@@ -507,38 +509,38 @@ To compare the response of each variable to *restr* (i.e. SCM implementation) wi
 of stormwater drainage from EI), we first plotted the predicted response to *degrd* (EI~S1~) for *rain1* = 0, 2, 8 and
 20 mm, assuming no SCMs (i.e. *restr* = 0) and setting other predictors as described above. For each experimental site,
 we plotted two points on each of these plots, corresponding to scenarios a) and b) above, to indicate the direction of
-response to SCM implementation. The EI value assigned to scenario a) equalled EI~S1~ and to b) equalled EI~S~.
+response to SCM implementation. The EI value assigned to scenario a) equaled EI~S1~ and to b) equaled EI~S~.
 
 ## Results
 
 ### Overview
 
-SCMs, as indicated by restr, reduced TP, FRP, TN, NOx and NH4+ concentrations and temperature, and increased EC; most
+SCMs, as indicated by *restr*, reduced TP, FRP, TN, NOx and NH4+ concentrations and temperature, and increased EC; most
 strongly in dry weather, with reduced effect sizes following increasingly large rain events. For TP, FRP, and NH4+,
-responses to restr after zero to \~8 mm of rain were similar to responses to degrd: i.e. the restorative effect of SCMs
-reversed the degrading effect of stormwater drainage. TN and NOx concentrations, among the study sites were most
+responses to *restr* after zero to \~8 mm of rain were similar to responses to *degrd*: i.e. the restorative effect of
+SCMs reversed the degrading effect of stormwater drainage. TN and NO~x~ concentrations, among the study sites were most
 strongly explained by septic tank density: the reduction of these contaminants by SCMs is likely a result of reductions
 of stormwater runoff volume, and removal of N in stormwater runoff that may receive some runoff from septic systems.
-Increased EC (adding to the effect of degrd rather than reducing it) and reduced temperatures suggest SCMs increased
+Increased EC (adding to the effect of *degrd* rather than reducing it) and reduced temperatures suggest SCMs increased
 groundwater flows into the streams. TSS, which was lower in control and experimental streams than in reference streams
 during low flows, was not affected by SCMs.
 
 Before describing these primary results in detail, we describe the results of model selection, and the effects of
-variables other than the primary variables of interest (restr, degrd, and rain1)Model selection and assessment
+variables other than the primary variables of interest (*restr*, *degrd*, and *rain1*).
 
 ### Model selection and assessment
 
-For each response variable, the model with maximum ELPD~loo~ was selected for assessment (Table S1-1). A clearly best
-model was evident for NO~x~, TN and temperature (Table S1-1). For other variables, addition of *season*, *rain365* and
-*channel* to the primary model (Eq. 3) made only small differences to model fit. Additional variables made no
-consequential difference to the effects of the predictors of primary interest (*restr, degrd, rain1* and interactions).
-Models selected for assessment were:
+For each response variable, the model with maximum ELPD~loo~ was selected for assessment (Appendix S1: Table S1). A
+clearly best model was evident for NO~x~, TN and temperature (Appendix S1: Table S1). For other variables, addition of
+*season*, *rain365* and *channel* to the primary model (Eq. 3) made only small differences to model fit. Additional
+variables made no consequential difference to the effects of the predictors of primary interest (*restr, degrd, rain1*
+and interactions). Models selected for assessment were:
 
--   FRP, primary model + channel + season;
+-   FRP, primary model + *channel* + *season*;
 
--   TP and TSS, primary model + season;
+-   TP and TSS, primary model + *season*;
 
--   NH~4~^+^, primary model + season + rain365;
+-   NH~4~^+^, primary model + *season* + *rain365*;
 
 -   EC, primary model;
 
@@ -547,12 +549,12 @@ Models selected for assessment were:
 -   Temperature, primary model (with fixed time effect) + *season* + *diel* + *rain365* + *season:degrd* + *diel:degrd+
     season:restr* + *diel:restr*.
 
-All eight selected models predicted their response variable well (*R* of predicted to observed 0.76-0.94, Appendix S1).
-In all models, the *autoT* and and *autoS* effects were strongly positive (Fig. 2), and the addition of these
+All eight selected models predicted their response variable well (*R* of predicted to observed 0.76-0.94, Appendix S1:
+Figs. S3-S10). In all models, the *autoT* and *autoS* effects were strongly positive (Fig. 2), and the addition of these
 autocorrelation terms improved the estimation of other parameters without significant change to mean estimates. The
 effect of *time* did not differ from zero for any response variable except temperature (Fig. 2F), for which an increase
 of 0.9$^\circ$C over the study period was predicted. This estimate closely matches the increase in mean air temperature
-of 0.95$^\circ$C over the same period in a nearby weather station (Scoresby, \<<http://bom.gov.au>\>). Rain365 had a
+of 0.95$^\circ$C over the same period in a nearby weather station (Scoresby, \<<http://bom.gov.au>\>). *Rain365* had a
 positive effect on TN and NO~x~ (Fig. 2C, D, E) suggesting their concentrations increased in wetter periods with higher
 baseflow contribution to streams. *Season* had a small positive effect on TP, FRP and TSS (Fig. 2A, B, H), meaning their
 concentrations tended to be higher in summer: conversely TN and NO~x~ were lower in summer (Fig. 2C, D). *Season* and
@@ -587,7 +589,7 @@ par(mar = c(0,0,0,0)); plot.new();
 title(xlab = "           Coefficient", line = -1,font.lab = 1)
 ```
 
-#### Fig. 2. Coefficient plots for models of A. total phosphorus, B. filterable reactive phosphorus, C. total nitrogen, D. nitrate + nitrite, E. ammonium, F. Temperature, G. electrical conductivity, H. total suspended solids. Each plot shows the mean, 80% (thick line) and 95% (thin line) confidence intervals for the fixed effects (see text for effect definitions), and the mean time effect in models in which time varied by site (see S1 for site-specific random effects). The coefficient axes are on a common scale as all response variables were centred and standardised.
+#### Fig. 2. Coefficient plots for models of A. total phosphorus, B. filterable reactive phosphorus, C. total nitrogen, D. nitrate + nitrite, E. ammonium, F. temperature, G. electrical conductivity, H. total suspended solids. Each plot shows the mean, 80% (thick line) and 95% (thin line) confidence intervals for the fixed effects (see text for effect definitions), and the mean time effect in models in which time varied by site (see Appendix S1: Figs. 3-10 for site-specific random effects). The coefficient axes are on a common scale as all response variables were centered and standardized.
 
 ### Degradation and restoration effects interact with antecedent rain
 
@@ -596,17 +598,17 @@ response variables, and in most cases these effects varied with *rain1* (interac
 interactions is illustrated for Ln (the catchment with the greatest stormwater control) in Fig. 3, and differences
 between scenarios a) and b), and b) and c) under the 4 rain conditions are shown for all 6 experimental sites in Fig. 4.
 
-TP concentrations increased strongly with rain1 in all study streams, but was consistently lower in reference streams
+TP concentrations increased strongly with *rain1* in all study streams, but were consistently lower in reference streams
 than in control streams. SCMs in Ln reduced TP concentrations to reference levels after little or no rain (Fig. 3A,
 4A.II). As a result, Ln met the Victorian government objective for TP concentration after SCM implementation, when it
 would have failed without SCMs (Fig. 3A). SCMs also reduced FRP concentrations in Ln after little or no rain, but not
-quite to reference levels (Fig. 3B, 4B.II). FRP concentrations in reference streams increased only weakly with rain1 up
-to 20 mm (Fig. 3B). so that differences in concentrations between streams with and without urban drainage increased with
-rainfall. The absolute reduction in both TP and FRP concentrations by SCMs in Ln was similar across all rain1 values,
-with increasing uncertainty after larger rain events (Fig. 4A.I, B.I), however, log-transformed concentrations after
-higher rainfall became more like urban control streams than reference streams (Fig. 3A, B). SCM-induced reductions in P
-were observed in Ln, Ls and L4, but reductions in D8, D4 and L1, which received less reduction in EI, were near zero
-(Fig. 4A.I, B.I).
+quite to reference levels (Fig. 3B, 4B.II). FRP concentrations in reference streams increased only weakly with *rain1*
+up to 20 mm (Fig. 3B), so that differences in concentrations between streams with and without urban drainage increased
+with rainfall. The absolute reduction in both TP and FRP concentrations by SCMs in Ln was similar across all *rain1*
+values, with increasing uncertainty after larger rain events (Fig. 4A.I, B.I), however, log-transformed concentrations
+after higher rainfall became more like urban control streams than reference streams (Fig. 3A, B). SCM-induced reductions
+in P were observed in Ln, Ls and L4, but reductions in D8, D4 and L1, which received less reduction in EI, were near
+zero (Fig. 4A.I, B.I).
 
 TN, NO~x~ and NH~4~^+^ concentrations in control and reference streams were poorly predicted by *rain1* (Fig 3C, D, E).
 SCMs reduced TN and NO~x~ after little or no rain in Ln, Ls, L4, D8, and D4, but no reduction was predicted in TN after
@@ -626,8 +628,8 @@ typically 0.4-0.7 mS/cm during dry weather, reducing to 0.2-0.4 mS/cm after 20 m
 in all experimental streams during dry weather (Fig. 4G.I), increasing the difference from reference condition (Fig. 3G,
 Fig. 4G.II). Ln exceeded the government objective for EC with and without SCM implementation (Fig. 3G).
 
-TSS concentrations increased with rain1, and reference streams had higher concentrations than control streams after 0-2
-mm of rain (Fig.2H, Fig. 4H.II). SCMs had no effect on TSS concentrations. (Fig. 3H, Fig. 4H.I).
+TSS concentrations increased with *rain1*, and reference streams had higher concentrations than control streams after
+0-2 mm of rain (Fig.2H, Fig. 4H.II). SCMs had no effect on TSS concentrations (Fig. 3H, Fig. 4H.I).
 
 ### Restoration response v. degradation response
 
@@ -676,7 +678,7 @@ plot.new()
 title(xlab = "Rain in preceding 24 h (mm)", line = -1, font.lab = 2)
 ```
 
-#### Fig. 3. A. Total phosphorus, B. filterable reactive phosphorus, C. total nitrogen, D. nitrate + nitrite, E. Ammonium, F. Temperature, G. electrical conductivity and H. total suspended solids, predicted as a function of *rain1* (rain in the 24 h before sampling) under three scenarios in Ln, the catchment with the greatest stormwater control. In each panel, the lines and polygons show medians and 95% credible intervals, respectively, for scenarios: no stormwater control measures (SCMs) were installed (yellow), SCMs installed by the end of the study in the Ln catchment (grey), reference condition (0% EI~S1~). The vertical lines indicate the 75th (2 mm) and 90th (8 mm) percentile antecedent 24-h rainfall; the median was 0 mm. The red points in A, C, and G indicate the Victorian government objective for 75th percentile concentration of TP, TN, and EC respectively for Yarra region lowland streams [@GovVic_2018].
+#### Fig. 3. A. Total phosphorus, B. filterable reactive phosphorus, C. total nitrogen, D. nitrate + nitrite, E. ammonium, F. temperature, G. electrical conductivity and H. total suspended solids, predicted as a function of *rain1* (rain in the 24 h before sampling) under three scenarios in Ln, the catchment with the greatest stormwater control. In each panel, the lines and polygons show medians and 95% credible intervals, respectively, for scenarios: no stormwater control measures (SCMs) were installed (yellow), SCMs installed by the end of the study in the Ln catchment (grey), reference condition (0% EI~S1~). The vertical lines indicate the 75th (2 mm) and 90th (8 mm) percentile antecedent 24-h rainfall; the median was 0 mm. The red points in A, C, and G indicate the Victorian government objective for 75th percentile concentration of TP, TN, and EC respectively for Yarra region lowland streams [@epavic2021].
 
 ```{r fig_4, fig.width = 5, fig.height = 8}
 comparisons <- read.csv("data/comparisons.csv")
@@ -725,7 +727,7 @@ title(main = "Rain in preceding 24 h (mm)",
 
 ```
 
-#### Fig. 4. Differences (median and 95% credible intervals) in response variables in each of the six experimental site between three scenarios. The left panels show the difference between the response variable without SCMs ("No SCMs") and with SCMs as installed at the end of the study in each site ("SCMs"). The right panel shows the difference between the response variable with SCMs and reference condition. A. total phosphorus, B. filterable reactive phosphorus, C. total nitrogen, D. nitrate + nitrite, E. ammonium, F. temperature, G. electrical conductivity and H. total suspended solids
+#### Fig. 4. Differences (median and 95% credible intervals) in response variables in each of the six experimental site between three scenarios. The left panels show the difference between the response variable without SCMs ("No SCMs") and with SCMs as installed at the end of the study in each site ("SCMs"). The right panel shows the difference between the response variable with SCMs and reference condition. A. total phosphorus, B. filterable reactive phosphorus, C. total nitrogen, D. nitrate + nitrite, E. ammonium, F. temperature, G. electrical conductivity and H. total suspended solids.
 
 ```{r Fig_5, fig.height=8, fig.width=5}
 # 
@@ -786,7 +788,7 @@ spatial variation among streams. In this study, we have increased confidence in 
 @pickett1989] by experimentally reducing drainage connection, and demonstrating changes in contaminant concentrations
 and temperatures, compared to control and reference sites. By quantifying both the degrading effect of stormwater runoff
 and the restorative effect of stormwater control in the same measure---effective imperviousness, as adapted by
-@WalshEtAl_2021 ---we have been able to directly compare the trajectories of degradation and restoration. And by casting
+@WalshEtAl_2022 ---we have been able to directly compare the trajectories of degradation and restoration. And by casting
 our experiment in a Before-After-Control-Reference-Impact design, we have placed observed changes in the contexts of
 departure from degraded state, and approach to reference state.
 
@@ -798,22 +800,22 @@ implications for better SCM design and for urban water management and protection
 ### How stormwater degrades stream water quality, and how SCMs mitigate their effect
 
 Stormwater drainage is as much a dry weather problem as a rain-related problem. The conventional approach to stormwater
-drainage manages the risk of urban flooding by making the risk of downstream environmental damage a certainty. SCMs
-installed in this experiment had the greatest influence on stream water quality during dry weather. There were two
-likely causes for this effect. First, baseflows, diminished by covering of catchment soils by impervious surfaces, were
-likely augmented by SCMs, as evidenced by reduced temperatures and increased EC. While some of this effect may be
-filtered flows through the pipe network, and exfiltrated flows through gravel-filled trenches and other elements of the
-urban karst [@bonneau2018], increased EC suggests that exfiltrated water from SCMs also increased saline groundwater
-flows into the streams. These increased flows likely diluted and cooled baseflows. Second, where we were able to install
-SCMs that intercepted runoff from entire subcatchments of pipes that convey runoff from roofs and roads, SCMs prevented
-dry-weather spills from flowing to the stream. This was true even for the several end-of-pipe SCMs that were suboptimal
-in that they only had the capacity to retain and treat runoff effectively up to 1-2 mm of rain (S scores?), but by
-providing dry-weather interception, they effectively intercepted any dry-weather spills that would otherwise have flowed
-to the stream.
+drainage manages the risk of urban flooding, but in doing so, makes the risk of downstream environmental damage a
+certainty. SCMs installed in this experiment had the greatest influence on stream water quality during dry weather.
+There were two likely causes for this effect. First, baseflows, diminished by covering of catchment soils by impervious
+surfaces, were likely augmented by SCMs, as evidenced by reduced temperatures and increased EC. While some of this
+effect may be filtered flows through the pipe network, and exfiltrated flows through gravel-filled trenches and other
+elements of the urban karst [@bonneau2018], increased EC suggests that exfiltrated water from SCMs also increased saline
+groundwater flows into the streams. These increased flows likely diluted and cooled baseflows. Second, where we were
+able to install SCMs that intercepted runoff from entire sub-catchments of pipes that convey runoff from roofs and
+roads, SCMs prevented dry-weather spills from flowing to the stream. This was true even for the several end-of-pipe SCMs
+that were suboptimal in that they only had the capacity to retain and treat runoff effectively up to 1-2 mm of rain, but
+by providing dry-weather interception, they effectively intercepted any dry-weather spills that would otherwise have
+flowed to the stream.
 
 The saline groundwater in the study catchments is likely a legacy of historic septic tank seepage. Most properties in
 the experimental catchments were sewered between 1985 and 1995 [@sew_2020; @yvw_2020], but some septic tanks remain
-throughout all catchments, as the backlog of sewer connections remains an ongoing endeavour [@vicauditgen_2006]. It is
+throughout all catchments, as the backlog of sewer connections remains an ongoing endeavor [@vicauditgen_2006]. It is
 therefore possible that the SCM-induced increase in EC is temporary, and the legacy salts may flush out in the future.
 
 A second legacy effect may in part explain the lack of effect of SCMs on TSS. While some of the higher TSS
@@ -854,20 +856,20 @@ of our experimental catchments, which our downslope raingardens would be interce
 ### How to better design and implement SCMs
 
 The SCMs implemented in this project resulted in reduction of nutrient concentrations and water temperatures to levels
-similar to reference sites, in dominant flow conditions, in some of the experimental catchments. However, phosphorus
+similar to reference sites, in dominant flow conditions, in several of the experimental catchments. However, phosphorus
 concentrations and temperature remained substantially higher than reference concentrations during large rain events, in
-all except the streams of the catchments in which substantial reductions in EIS were achieved (Fig. 4). *EI~S~*
-reductions achieved by the experiment were less than originally aimed for [@WalshEtAl_2021], because we were unable to
+all except the streams of the catchments in which substantial reductions in *EI~S~* were achieved (Fig. 4). *EI~S~*
+reductions achieved by the experiment were less than originally aimed for [@WalshEtAl_2022], because we were unable to
 implement SCMs that intercepted runoff from many catchment impervious surfaces, and many SCMs had insufficient retention
 capacity. The experimental SCMs fell short in two ways: insufficient coverage of impervious surfaces, and insufficient
 retention capacity. Addressing these two shortcoming requires an ambitious and determined approach to SCM
 implementation.
 
-First, SCMs need to be applied at every scale, from the individual land parcel (ie. households) to end-of-pipe systems,
+First, SCMs need to be applied at every scale, from the individual land parcel (i.e. households) to end-of-pipe systems,
 designed to deal with runoff from the impervious areas in the catchment that were not able to be dealt with by at-source
-or intermediate systems. Strategies that are entirely on large, centralized end-of-pipe SCMs will likely fail, as they
+or intermediate systems. Strategies that rely entirely on large, centralized end-of-pipe SCMs will likely fail, as they
 will (i) likely be unable to ensure effective treatment with the large hydraulic loading they receive, (ii) likely be
-distant from demands for their water, thus reducing their effectiveness in load reduction, (iii) potentially cause
+distant from demands for their water, thus reducing their effectiveness in load reduction, and (iii) potentially cause
 perverse effects, such as contributing to heating of waters subsequently discharged to receiving waters
 [@stajkowski2021]. Similarly, strategies based only on at-source application of SCMs will likely fail, because
 inevitably space or other constraints will preclude application of SCMs to some impervious areas, as we observed in this
@@ -877,41 +879,43 @@ that fail, or for runoff from untreated impervious areas. In some instances it m
 land, where that land would allow implementation of an SCM that is critical to dealing with otherwise unmitigated
 runoff.
 
-Increasing retention capacity depends on the amount of demand that can be applied to harvested stormwater [@walsh2016],
-as well as maximizing opportunities for evapotranspiration. Maximising the amount of demand requires end-uses which are
-regular (e.g. indoor uses) rather than seasonal (e.g irrigation). Without these regular demands, rainwater and
-stormwater harvesting storages will remain full for much of the year [@mitchell2007], leading to frequent discharge of
-unmitigated runoff. SCMs should therefore be positioned to permit distribution of water from them to meet demands. This
-is typically done by locating rainwater tanks at the land parcel scale. Larger scale, more centralized application (ie.
-central storage with reticulation back to demands) will be difficult to achieve in existing urban areas, but may be
-possible where redevelopment or new development is being proposed.
+Increasing retention capacity depends on the amount of demand for harvested stormwater [@walsh2016], as well as
+maximizing opportunities for evapotranspiration. Maximizing the amount of demand requires end-uses which are regular
+(e.g. indoor uses) rather than seasonal (e.g. irrigation). Without these regular demands, rainwater and stormwater
+harvesting storages will remain full for much of the year [@mitchell2007], leading to frequent discharge of unmitigated
+runoff. SCMs should therefore be positioned to permit distribution of water from them to meet demands. This is typically
+done by locating rainwater tanks at the land parcel scale. Larger scale, more centralized application (i.e. central
+storage with reticulation back to demands) will be difficult to achieve in existing urban areas, but may be possible
+where redevelopment or new development is being proposed.
 
 Evapotranspiration can be actively increased (by harvesting and then irrigation of green space), but increases can also
 be achieved through passively-irrigated street-tree pits [@luketich2019], or through designing stormwater treatment
-systems to maximise exfiltration and planting deep-rooted, high water-demand vegetation (typically trees) nearby.
+systems to maximize exfiltration and planting deep-rooted, high water-demand vegetation (typically trees) nearby.
 Western et al. [-@western2021] demonstrated that this strategy can not only reduce the overall runoff volume, but can
-protect urban vegetation from water stress, with benefits for urban amenity and liveability.
+protect urban vegetation from water stress, with benefits for urban amenity and livability.
 
 One important concern not considered by this study is the effectiveness of SCMs in intercepting and retaining
 micropollutants, microbes, heavy metals, hydrocarbons and other emerging pollutants of concerns. Many of these
 contaminants can be highly mobile, with several studies showing varied effectiveness of SCMs in retaining them
 [@schmitt2015; @lefevre2015]. Widespread implementation of SCMs in a catchment should ideally follow a detailed audit of
-the pollutant profile, allowing the design of control measures to be optimised to treat the contaminants of concern.
+the pollutant profile, allowing the design of control measures to be optimized to treat the contaminants of concern.
+Attention will also need to be paid to the long-term water quality treatment performance of SCMs, including the need to
+maintain filter media and replace them before chemical saturation, to avoid breakthrough.
 
 ### Implications for stream restoration and protection
 
 The prediction of in-stream water quality as a function of *EI~S~* lends strength to the proposition that ecologically
 successful restoration of urban streams [sensu @palmer2005] requires management intervention at a catchment scale to
 match the scale of the stormwater drainage impacts, rather than small-scale restoration of stream habitat
-[@bernhardt2011]. The relatively small effect on concentrations of the substantial channel excavation upstream of Ln
-(i.e. the *channel* effect) compared to the effects of SCMs further points to a relatively small influence of local
-disturbances compared to the catchment-scale disturbance of urban stormwater drainage.
+[@bernhardt2011]. The relatively small effect on concentrations of the channel excavation upstream of Ln (i.e. the
+*channel* effect) compared to the effects of SCMs further points to a relatively small influence of local disturbances
+compared to the catchment-scale disturbance of urban stormwater drainage.
 
 Restoration of water quality and flow regime is a fundamental basis for restoration of ecological structure and
 function, and retention and treatment of stormwater is critical to achieving that. Our study has shown that
 appropriately designed SCMs applied at a range of scales can contribute predictably to restoring water quality (and
 through indirect evidence, dry-weather flows) in degraded urban streams. Because *EI~S~* integrates measures of SCM
-performance in its formulation [@WalshEtAl_2021], it can be used to assess the effects of potential SCM designs and
+performance in its formulation [@WalshEtAl_2022], it can be used to assess the effects of potential SCM designs and
 implementation strategies, to predict in-stream water quality responses and prioritize management actions.
 
 For example, the combination of large-scale harvesting and infiltration systems implemented in the Ln catchment was
@@ -926,14 +930,14 @@ Variation in nitrogen concentration, in particular its dominant form, NO~x~, amo
 sites, was most strongly explained by septic tank density. Two of the reference sites had the highest septic tank
 density of all catchments (Table 1). Despite high septic density, and high NO~x~ concentrations, the reference sites Sa
 and Ol retained a high degree of ecological integrity: diverse invertebrate communities dominated by sensitive taxa
-[@walsh2004], leaf breakdown primarily mediated by shredder species [@imberger2008],low-biomass algal assemblages
+[@walsh2004], leaf breakdown primarily mediated by shredder species [@imberger2008], and low-biomass algal assemblages
 [@taylor2004] dominated by eutrophic species [@newall2005]. These biotic attributes of the reference streams, together
 with the low concentrations of reactive phosphorus (Fig 3B), suggest that phosphorus, rather than nitrogen, limits
 primary productivity, with elevated nitrogen concentrations having little ecological effect. The substantial reductions
 in P that were achieved by SCM implementation in Ln, Ls, L4 and D8 are therefore likely to influence ecological change
 in these study streams (the subject of ongoing study). Although SCM implementation reduced in-stream nitrogen
-concentrations, further reductions, in urban and reference streams alike, will require retirement of septic tanks in
-these catchments.
+concentrations, further reductions, in urban and reference streams alike, will likely require retirement of septic tanks
+in these catchments.
 
 The elevated EC in the urban study catchments is likely to limit the colonization and persistence of some salt-sensitive
 species [e.g. @kefford2018], and the increase caused by SCM implementation is likely to exacerbate this limitation.
@@ -952,59 +956,60 @@ effluent are present, they should clearly be management priorities. However addr
 of the problem of stormwater misses an opportunity to more comprehensively restore stream ecological structure and
 function. Our study has demonstrated that stream water quality is impaired by small areas of conventionally drained
 impervious surfaces, and SCMs designed to retain and lose or treat stormwater runoff from all or near-all catchment
-impervious surfaces is required to mitigate such impairment to a level approaching the pre-urban state. While such an
-objective is likely to be challenging under dominant urban water management policy and practice, the potential
-co-benefits of alternative stormwater management can be large [@walsh2016].
+impervious surfaces is required to mitigate such impairment to a level approaching the pre-urban state. Stormwater
+management to such a standard is being implemented in priority areas of the Melbourne region [@mw_2018]. While broader
+adoption of such an objective is likely to be challenging under dominant urban water management policy and practice, the
+potential co-benefits of alternative stormwater management can be large [@walsh2016].
 
 Protection and ecologically successful restoration of river and stream ecosystems are likely to require approaches to
-stormwater control beyond current dominant approaches [@walsh2016]. If river and stream protection is an objective, more
-ambitious targets are required than, for instance, those of most Mid-Atlantic municipalities, which have a goal of
+stormwater control beyond those that currently dominate [@walsh2016]. If river and stream protection is an objective,
+more ambitious targets are required than, for instance, those of most Mid-Atlantic municipalities, which have a goal of
 achieving 10--20% of the landscape drain runoff through SCMs by 2030 [@pennino2016]. Stream protection will require
 changing standard drainage practice so that conventional drainage is no longer the default. It will require near-100% of
 impervious surfaces draining to SCMs (noting that SCMs should be designed for interception of runoff from impervious
 surfaces, not from entire landscapes: @pennino2016). It will require SCMs in treatment trains at a range of scales from
-land-parcel to the largest subcatchment that enters a stream, and with the terminal treatment supported as much as
+land-parcel to the largest sub-catchment that enters a stream, and with the terminal treatment supported as much as
 possible by upstream treatments.
 
 #### Table 2. A summary of degrading mechanisms relevant to our study streams, and evidence from this study for any mitigating effect of stormwater control measures.
 
-+----------------------------------------------------------+----------------------------------------------------------+
-| Degrading mechanism                                      | Mitigated by stormwater control measures                 |
-+==========================================================+==========================================================+
-| [**STORMWATER (degrd effect)**]{.ul}                     |                                                          |
-+----------------------------------------------------------+----------------------------------------------------------+
-| 1.  Dry weather spills or septic seepage to stormwater   | Yes: reduced dry-weather P, N                            |
-+----------------------------------------------------------+----------------------------------------------------------+
-| 2.  Frequent hydraulic and chemical disturbance from     | Yes: reduced P, N, temperature after up to 8 mm rain     |
-|     storm runoff                                         |                                                          |
-+----------------------------------------------------------+----------------------------------------------------------+
-| 3.  Reduced baseflows                                    | Yes: reduced dry-weather temperature (and increased EC)  |
-+----------------------------------------------------------+----------------------------------------------------------+
-| 4.  Incision and widening from increased stream power    | Unclear: lack of SCM impact on TSS suggests SCMs may not |
-|                                                          | have mitigated this effect: in-channel vs. catchment     |
-|                                                          | sources need further investigation                       |
-+----------------------------------------------------------+----------------------------------------------------------+
-| 5.  Warmer, lighter in-stream conditions (resulting from | Yes: reduced temperature                                 |
-|     3 and 4)                                             |                                                          |
-+----------------------------------------------------------+----------------------------------------------------------+
-| 6.  Loss of fine to coarse sediments (resulting from 4), | No: no change in TSS                                     |
-|     perhaps leading to reduced TSS                       |                                                          |
-+----------------------------------------------------------+----------------------------------------------------------+
-| [**SEPTIC TANK/GREY WATER SEEPAGE (septic                |                                                          |
-| effect)**]{.ul}                                          |                                                          |
-+----------------------------------------------------------+----------------------------------------------------------+
-| 1.  To stormwater drains                                 | Yes: reduced N                                           |
-+----------------------------------------------------------+----------------------------------------------------------+
-| 2.  To groundwater                                       | Possibly: reduced N                                      |
-+----------------------------------------------------------+----------------------------------------------------------+
-| [**CLIMATE CHANGE (time effect)**]{.ul}                  |                                                          |
-+----------------------------------------------------------+----------------------------------------------------------+
-| 1.  Potential reduced dry weather flows                  | Yes: reduced dry-weather temperature, increased EC       |
-+----------------------------------------------------------+----------------------------------------------------------+
-| 2.  Warming                                              | Yes: reduced temperature                                 |
-+----------------------------------------------------------+----------------------------------------------------------+
++-----------------------------------------------------------+-----------------------------------------------------------+
+| Degrading mechanism                                       | Mitigated by stormwater control measures                  |
++===========================================================+===========================================================+
+| [**STORMWATER (*degrd* effect)**]{.ul}                    |                                                           |
++-----------------------------------------------------------+-----------------------------------------------------------+
+| 1.  Dry weather spills or septic seepage to stormwater    | Yes: reduced dry-weather P, N                             |
++-----------------------------------------------------------+-----------------------------------------------------------+
+| 2.  Frequent hydraulic and chemical disturbance from      | Yes: reduced P, N, temperature after up to 8 mm rain      |
+|     storm runoff                                          |                                                           |
++-----------------------------------------------------------+-----------------------------------------------------------+
+| 3.  Reduced baseflows                                     | Yes: reduced dry-weather temperature (and increased EC)   |
++-----------------------------------------------------------+-----------------------------------------------------------+
+| 4.  Incision and widening from increased stream power     | Unclear: lack of SCM impact on TSS suggests SCMs may not  |
+|                                                           | have mitigated this effect: in-channel vs. catchment      |
+|                                                           | sources need further investigation                        |
++-----------------------------------------------------------+-----------------------------------------------------------+
+| 5.  Warmer, lighter in-stream conditions (resulting from  | Yes: reduced temperature                                  |
+|     3 and 4)                                              |                                                           |
++-----------------------------------------------------------+-----------------------------------------------------------+
+| 6.  Loss of fine to coarse sediments (resulting from 4),  | No: no change in TSS                                      |
+|     perhaps leading to reduced TSS                        |                                                           |
++-----------------------------------------------------------+-----------------------------------------------------------+
+| [**SEPTIC TANK/GREY WATER SEEPAGE (*septic*               |                                                           |
+| effect)**]{.ul}                                           |                                                           |
++-----------------------------------------------------------+-----------------------------------------------------------+
+| 1.  To stormwater drains                                  | Yes: reduced N                                            |
++-----------------------------------------------------------+-----------------------------------------------------------+
+| 2.  To groundwater                                        | Possibly: reduced N                                       |
++-----------------------------------------------------------+-----------------------------------------------------------+
+| [**CLIMATE CHANGE (*time* effect)**]{.ul}                 |                                                           |
++-----------------------------------------------------------+-----------------------------------------------------------+
+| 1.  Potential reduced dry weather flows                   | Yes: reduced dry-weather temperature, increased EC        |
++-----------------------------------------------------------+-----------------------------------------------------------+
+| 2.  Warming                                               | Yes: reduced temperature                                  |
++-----------------------------------------------------------+-----------------------------------------------------------+
 
-## Acknowledgements
+## Acknowledgments
 
 The primary research activities of this project were funded by: the Australian Research Council (ARC) Linkage Program
 (LP0883610 and LP130100295, to CJW and TDF) with partner organizations Melbourne Water (MW) and Yarra Ranges Council
@@ -1024,8 +1029,8 @@ We thank Graham Rooney, Rhys Coleman, Toby Prosser and Sharyn Rossrakesh from MW
 project. Belinda Hatt, Sally Boer, Monica Tewman, Ashley Macqueen, Tony Lovell, Mike Sammonds, Carleen Mitchell, Rob
 James, and Genevieve Hehir assisted with collection of samples. Belinda Hatt, Sandra Sdraulig, Ashley Liang and Tina
 Hines conducted the laboratory analyses. We thank Lee Hazel for guidance with modeling, Rhys Eddy for sewerage
-information and Vaughn Grey for comments on the manuscript.
+information and Vaughn Grey, Matt Potter, Rhys Coleman and Judy Blackbeard for comments on the manuscript.
 
 Sampling in reference streams was conducted with Parks Victoria research permits (10007079, 10007127 and 10008347).
 
-## References
+## Literature cited

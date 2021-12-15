@@ -2,7 +2,7 @@
 title: "Dispersed urban-stormwater control improved stream water quality in a catchment-scale experiment"
 subtitle: "Appendix S1. Statistical methods and code"
 author:
-  - Christopher J Walsh, Sam J Imberger, Matthew J Burns, Darren G Bos, and Tim D Fletcher
+  - Christopher J. Walsh, Sam J. Imberger, Matthew J. Burns, Darren G. Bos, and Tim D. Fletcher
 date: "School of Ecosystem and Forest Sciences, The University of Melbourne, 500 Yarra Boulevard, Burnley, 3121 Victoria, Australia"
 output:   
   word_document:
@@ -74,7 +74,7 @@ The code in `wq_methods_A_data_compilation.Rmd` compiled the data into an excel 
 University servers: it is provided to record the process of data compilation.
 
 Data specific to each of the 11 sites is recorded in the 'sites' worksheet. For more information on each of these sites,
-see @WalshEtAl_2021, and its supplementary material and data at <https://doi.org/10.17605/OSF.IO/57AZQ>. Fig 2 in that
+see @WalshEtAl_2022, and its supplementary material and data at <https://doi.org/10.17605/OSF.IO/57AZQ>. Fig 2 in that
 paper is a map of the site locations, illustrating patterns of impervious coverage and connection in the catchments of
 the 11 sites. Data specific to each of the 8 water quality variables is recorded in the 'wq_vars' table (units, methods,
 detection limits).
@@ -83,7 +83,7 @@ The 'wq_data' table contains all of the relevant predictor and response variable
 unique samplecode, a sitecode that links to the sites table, and a date and time when the sample was taken. Values of
 the 10 predictor variables in this table are transformed to reduce leverage in the models, but, other than *t*, were not
 centered or standardised. (They were centered and standardised, as required, in `wq_methods_C_model_sampling.Rmd`).
-There was little correlation among the predictors (Fig. S1-1), except between *t*, the time variable, and *filter,* the
+There was little correlation among the predictors (Figure S1), except between *t*, the time variable, and *filter,* the
 variable differentiating samples taken with different filters (see below).
 
 ```{r fig.width = 6.5, fig.height = 6.5}
@@ -92,14 +92,14 @@ sites <- data.frame(readxl::read_excel("data/wq_data_compiled.xlsx",
 wq_data <- data.frame(readxl::read_excel("data/wq_data_compiled.xlsx", 
                                          sheet = "wq_data"))
 wq_data$date_time <- lubridate::ymd_hms(wq_data$date_time)
-# centre and scale time
+# center and scale time
 wq_data$t <- as.numeric(wq_data$date_time)
 wq_data$t <- 3*(wq_data$t - (min(wq_data$t) + diff(range(wq_data$t))*0.5) )/ diff(range(wq_data$t))
 # set grouping variables as integers (as expected by Stan)
 wq_data$site_no <- as.integer(wq_data$site_no)
 wq_data$stream_no <- as.integer(wq_data$stream_no)
-# Leave rain1 uncentred, range 0-1.76, and median 0. Useful to have 0 as the median.
-# Centre and scale rain365 and septic
+# Leave rain1 uncentered, range 0-1.76, and median 0. Useful to have 0 as the median.
+# center and scale rain365 and septic
 wq_data$rain365 <- 3*(wq_data$rain365 - (min(wq_data$rain365) + 
                                            diff(range(wq_data$rain365))*0.5) )/ diff(range(wq_data$rain365))
 wq_data$septic <- 3*(wq_data$septic - (min(wq_data$septic) + 
@@ -125,7 +125,7 @@ pairs(wq_data[c("degrd","restr","rain1","rain365","channel",
 
 ```
 
-#### Fig. S1-1. Correlations among the ten predictor variables. Red lines are spline smoothers, and the correlations above the diagonal are sized proportionally to the size of the correlation.
+#### Figure S1. Correlations among the ten predictor variables. Red lines are spline smoothers, and the correlations above the diagonal are sized proportionally to the size of the correlation.
 
 The values of the eight response variables in the 'wq_data' table are untransformed data with units as defined in the
 'Unit in wq_data' field in the 'wq_vars' table. Note that for some variables, different units (as defined in the 'Unit
@@ -148,7 +148,7 @@ $$
 where *y~i~* is the value in the *i*th sample, and $\mu_i$ is the mean estimate for the sample and $\sigma$ is the
 residual standard deviation. Transformations to approximate a normal distribution of y were: log~10~(FRP), log~10~(TP),
 log~10~(NH~4~^+^), log~10~(TSS), sqrt(NO~x~), sqrt(TN), sqrt (EC) or log~10~(temperature). To aid model convergence each
-response variable was also centred and scaled.
+response variable was also centered and scaled.
 
 The simplest model is coded as `m_1`, with predictor variables:
 
@@ -165,7 +165,7 @@ The simplest model is coded as `m_1`, with predictor variables:
 -   *site_no*, an integer representing each of the 11 sites. The model has a general intercept parameter, *a*, and a
     random *site_no* effect, *a_s* for each site_no*.*
 
--   *time*, centred and scaled time of sample since the first sample, with a slope parameter *b_t* for each *site_no*
+-   *time*, centered and scaled time of sample since the first sample, with a slope parameter *b_t* for each *site_no*
     (except for temperature, NO~x~ and TN for which time was a fixed effect).
 
 More complex candidate models were calculated by adding additional variables of relevance to each response variable, as
@@ -174,7 +174,7 @@ described in the paper. To reduce the number of Stan models to be compiled, addi
 stage. XXX general model structures were compiled in `wq_methods_B_model_compilation.Rmd`, and these were used to sample
 106 specific models in `wq_methods_C_model_sampling.Rmd`.
 
-For each general model structure, the model was sampled in a two-step process. First the model was run with
+For each general model structure, the model was sampled in a two-step process. First the model was run without
 autocorrelation terms (*autoT* and *autoS*). The residuals of that model were used to calculate *autoT* (for samples
 with at least one other sample from the same site in the preceding 45 days, *autoT* equals the mean residual of all such
 samples) and *autoS* (for samples from L4 or D8 on days when samples were also taken from upstream sites: *autoS* equals
@@ -218,18 +218,18 @@ plot(ft_posteriors$nox_f,ft_posteriors$nox_t, pch = 16,
 title(main = "F.", adj = 0)
 ```
 
-#### Fig. S1-2. Coefficients (mean, 95% (thin lines) and 80% (thick lines) confidence interval) of the main experimental effects for A. FRP, C. NH~4~^+^, and D. NO\~x\~, for the best-fit model structure, with (blue) and without (red) a filter variable. The filter coefficient was near zero for FRP and NH~4~^+^, and in both cases the posterior distributions of the effects of time and filter were not correlated. In contrast, the collinear effects of time and filter (F) resulted in a negative filter effect (the opposite of what would be expected mechanistically), and the time effect shifting from near zero to positive when filter was included in the model (E). For all three variables the inclusion of a filter variable had no consequential effect on estimates of other effects (A, C, E).
+#### Figure S2. Coefficients (mean, 95% (thin lines) and 80% (thick lines) confidence interval) of the main experimental effects for A. FRP, C. NH~4~^+^, and D. NO~x~, for the best-fit model structure, with (blue) and without (red) a filter variable. The filter coefficient was near zero for FRP and NH~4~^+^, and in both cases the posterior distributions of the effects of time and filter were not correlated. In contrast, the collinear effects of time and filter (F) resulted in a negative filter effect (the opposite of what would be expected mechanistically), and the time effect shifting from near zero to positive when filter was included in the model (E). For all three variables the inclusion of a filter variable had no consequential effect on estimates of other effects (A, C, E).
 
-Fig. S1-2 shows coefficient estimates of the best-fit models for FRP, NH~4~^+^ and NO~x~, with a filter effect, and the
+Figure S2 shows coefficient estimates of the best-fit models for FRP, NH~4~^+^ and NO~x~, with a filter effect, and the
 same model structure without the filter effect. For FRP and NH~4~^+^, models with a filter effect were equally plausible
 as equivalent models without a filter effect (as assessed by looIC). Models of NO~x~ with a filter effect were
 marginally better fits than models without a filter effect, but inclusion of *filter* introduced multicollinearity into
-the model (Fig. S1-2F).
+the model (Figure S2F).
 
 The effect of using filters of larger pore size after 2003 was near zero for FRP (mean 0.03, 95% confidence intervals
--0.01, 0.07, Fig. S1-2A) and NH~4~^+^ (mean -0.02, 95% CIs -0.05, 0.05, Fig. S1-2C). Despite the raw correlation between
-time and filter effects (R = 0.68, Fig. S1-1), they were uncorrelated conditional on other predictors in the models
-(Fig. S1-2B, D). In contrast, the time and filter effects were collinear in the NO~x~ model (Fig. S1-2F), resulting in a
+-0.01, 0.07, Figure S2A) and NH~4~^+^ (mean -0.02, 95% CIs -0.05, 0.05, Figure S2C). Despite the raw correlation between
+time and filter effects (R = 0.68, Figure S1), they were uncorrelated conditional on other predictors in the models
+(Figure S2B, D). In contrast, the time and filter effects were collinear in the NO~x~ model (Figure S2F), resulting in a
 negative *filter* coefficient and a positive *t* effect, compared to a near-zero *t* effect in the equivalent model
 without a *filter* effect. If filters of larger pore size were to have an effect, they would be expected to increase
 concentrations: a positive effect. Because of the multicollinearity of these variables in the NO~x~ model, the *filter*
@@ -239,11 +239,11 @@ suggest that the effect of *filter* on NO~x~ was also near zero.
 
 We thus elected to not include a filter effect in candidate models because a) the reliable estimates of filter effect
 for FRP and NH~4~^+^ suggest a near-zero effect, and b) the inclusion or exclusion of a filter effect did not change the
-estimates of other effects in the models (Fig. S1-2A, B, C).
+estimates of other effects in the models (Figure S2A, B, C).
 
 ### Candidate models without *filter* effect
 
-Table S1-1 summarises all candidate models for each response variable, and identifies the optimal models used for each
+Table S1 summarises all candidate models for each response variable, and identifies the optimal models used for each
 variable from the expected log-predictive density [@Vehtari_EtAl_2017].
 
 For each model we estimated the posterior distributions of all parameters using the Markov chain Monte Carlo sampler
@@ -254,8 +254,8 @@ drawn from hyperdistributions with a mean drawn from a normal distribution with 
 standard deviation drawn from a half-Cauchy distribution (mean 0, standard deviation 2). Each generic model structure
 was compiled using the code in `wq_methods_B_model_compilation.Rmd`, and the parameters and predicted values of y for
 each candidate model were sampled using the code in `wq_methods_C_model_sampling.Rmd`. Compiling and sampling the 74
-models listed in Table S1-1 with and without autocorrelation terms, and with and without a filter variable (totalling
-296 models) took \~14 h on a 4-CPU core system at 2.6 GHz.
+models listed in Table S1 with and without autocorrelation terms, and with and without a filter variable (totalling 296
+models) took \~14 h on a 4-CPU core system at 2.6 GHz.
 
 For each model we drew inference from 2000 posterior samples taken from 4 unthinned chains, discarding the first 1000
 values of each chain to remove the effects of the randomly generated initial values. We diagnosed convergence by
@@ -266,11 +266,12 @@ effective sample size, Bayesian Fraction of Missing Information, and saturation 
 
 We used the model with the highest leave-one-out estimate of out-of-sample predictive fit (ELPD~loo~:
 @Vehtari_EtAl_2017) to assess responses of each variable. For each of the eight optimal models, the model structures
-were edited to generate predictions under specific scenarios to produce the predictive plots in Figs. 3-5 of the paper.
-The models with generated predictions were compiled using the code in `wq_methods_E_model_compilation_with_Xpred.Rmd`
-and sampled using the code in `wq_methods_F_model_sampling_with_Xpred.Rmd`.
+were edited to generate predictions under specific scenarios to produce the predictive plots in Figures 3-5 of the
+paper. The models with generated predictions were compiled using the code in
+`wq_methods_E_model_compilation_with_Xpred.Rmd` and sampled using the code in
+`wq_methods_F_model_sampling_with_Xpred.Rmd`.
 
-#### Table S1-1. Candidate models trialed for the eight response variables. Every model included the random site predictor and fixed predictors *degrd, restr, rain1, rain1:degrd, rain1:restr, at* and *as*, as specified in the primary model (eq. 3 in the paper). Models with Time = t[site] included a variable time effect for each site (as in eq 3), while those with Time = t included a fixed time effect. Models also differed by the specified additional predictors. The differences (± standard error) in expected log predictive density (ELPD~loo~) from the optimal model (difference = 0) are indicated for each response variable. Equally plausible models to the optimal model are indicated in bold.
+#### Table S1. Candidate models trialed for the eight response variables. Every model included the random site predictor and fixed predictors *degrd, restr, rain1, rain1:degrd, rain1:restr, at* and *as*, as specified in the primary model (eq. 3 in the paper). Models with Time = t[site] included a variable time effect for each site (as in eq 3), while those with Time = t included a fixed time effect. Models also differed by the specified additional predictors. The differences (± standard error) in expected log predictive density (ELPD~loo~) from the optimal model (difference = 0) are indicated for each response variable. Equally plausible models to the optimal model are indicated in bold.
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 # See wq_methods_D_model_selection.Rmd for origin of this xslx file
@@ -357,7 +358,7 @@ ft1
 
 ## Summaries of model coefficients and fits
 
-Figs. S1-3 to S1-10 illustrate the distributions of all parameters for each optimal model, including site-specific
+Figures S3 to S10 illustrate the distributions of all parameters for each optimal model, including site-specific
 parameters not illustrated in the main paper. For each model, the mean predicted value for each data point is plotted
 against the observed value, and the Pearson correlation coefficient is reported as an indication of model fit.
 
@@ -365,7 +366,7 @@ against the observed value, and the Pearson correlation coefficient is reported 
 # Import coefficient and fit data compiled in methods_D
 oes <- get(load("data/oe_list_8vars.rda"))
 coeffs_8vars <- read.csv("data/coeffs_8vars.csv")
-#function for plotting figs S1-3 to S1-10
+#function for plotting figs S3 to S10
 coeff_4plots <- function(wqvar){
 coeffs_i <- coeffs_8vars[coeffs_8vars$var == wqvar,]
 d <- oes[names(oes) == wqvar][[1]]
@@ -402,49 +403,49 @@ panel_label <- ifelse(wqvar %in% c("nox","tn","tem"),"C.","D.")
 coeff_4plots("frp")
 ```
 
-#### Fig. S1-3. FRP. A. Median coefficient estimates (points with thick and thin error bars representing 90 and 95% confidence intervals, respectively) for the fixed effects (and the mean site effect). B. site effects. C. time effect for each site. D. plot of all observed vs predicted values of (transformed, scaled) FRP concentration. The red line shows line of best fit, and the dotted black line shows the 1:1 relationship.
+#### Figure S3. FRP. A. Median coefficient estimates (points with thick and thin error bars representing 90 and 95% confidence intervals, respectively) for the fixed effects (and the mean site effect). B. site effects. C. time effect for each site. D. plot of all observed vs predicted values of (transformed, scaled) FRP concentration. The red line shows line of best fit, and the dotted black line shows the 1:1 relationship.
 
 ```{r, fig.width = 5, fig.height = 4.5}
 coeff_4plots("tp")
 ```
 
-#### Fig. S1-4. TP. Median coefficient estimates (points with thick and thin error bars representing 90 and 95% confidence intervals, respectively) for the fixed effects (and the mean site effect). B. site effects. C. time effect for each site. D. plot of all observed vs predicted values of (transformed, scaled) TP concentration. The red line shows line of best fit, and the dotted black line shows the 1:1 relationship.
+#### Figure S4. TP. Median coefficient estimates (points with thick and thin error bars representing 90 and 95% confidence intervals, respectively) for the fixed effects (and the mean site effect). B. site effects. C. time effect for each site. D. plot of all observed vs predicted values of (transformed, scaled) TP concentration. The red line shows line of best fit, and the dotted black line shows the 1:1 relationship.
 
 ```{r, fig.width = 5, fig.height = 4.5}
 coeff_4plots("tn")
 ```
 
-#### Fig. S1-5. TN. Median coefficient estimates (points with thick and thin error bars representing 90 and 95% confidence intervals, respectively) for the fixed effects (and the mean site effect). B. site effects. C. plot of all observed vs predicted values of (transformed, scaled) TN concentration. The red line shows line of best fit, and the dotted black line shows the 1:1 relationship.
+#### Figure S5. TN. Median coefficient estimates (points with thick and thin error bars representing 90 and 95% confidence intervals, respectively) for the fixed effects (and the mean site effect). B. site effects. C. plot of all observed vs predicted values of (transformed, scaled) TN concentration. The red line shows line of best fit, and the dotted black line shows the 1:1 relationship.
 
 ```{r, fig.width = 5,  fig.height = 4.5}
 coeff_4plots("nox")
 ```
 
-#### Fig. S1-6. NO~x~ Median coefficient estimates (points with thick and thin error bars representing 90 and 95% confidence intervals, respectively) for the fixed effects (and the mean site effect). B. site effects. C. plot of all observed vs predicted values of (transformed, scaled) NO~x~ concentration. The red line shows line of best fit, and the dotted black line shows the 1:1 relationship.
+#### Figure S6. NO~x~ Median coefficient estimates (points with thick and thin error bars representing 90 and 95% confidence intervals, respectively) for the fixed effects (and the mean site effect). B. site effects. C. plot of all observed vs predicted values of (transformed, scaled) NO~x~ concentration. The red line shows line of best fit, and the dotted black line shows the 1:1 relationship.
 
 ```{r, fig.width = 5, fig.height = 4.5}
 coeff_4plots("nh3")
 ```
 
-#### Fig. S1-7. NH~4~^+^. A. Median coefficient estimates (points with thick and thin error bars representing 90 and 95% confidence intervals, respectively) for the fixed effects (and the mean site effect). B. site effects. C. time effect for each site. D. plot of all observed vs predicted values of (transformed, scaled) NH~4~^+^ concentration. The red line shows line of best fit, and the dotted black line shows the 1:1 relationship.
+#### Figure S7. NH~4~^+^. A. Median coefficient estimates (points with thick and thin error bars representing 90 and 95% confidence intervals, respectively) for the fixed effects (and the mean site effect). B. site effects. C. time effect for each site. D. plot of all observed vs predicted values of (transformed, scaled) NH~4~^+^ concentration. The red line shows line of best fit, and the dotted black line shows the 1:1 relationship.
 
 ```{r, fig.width = 5, fig.height = 4.5}
 coeff_4plots("tss")
 ```
 
-#### Fig. S1-8. TSS A. Median coefficient estimates (points with thick and thin error bars representing 90 and 95% confidence intervals, respectively) for the fixed effects (and the mean site effect). B. site effects. C. time effect for each site. D. plot of all observed vs predicted values of (transformed, scaled) TSS concentration. The red line shows line of best fit, and the dotted black line shows the 1:1 relationship.
+#### Figure S8. TSS A. Median coefficient estimates (points with thick and thin error bars representing 90 and 95% confidence intervals, respectively) for the fixed effects (and the mean site effect). B. site effects. C. time effect for each site. D. plot of all observed vs predicted values of (transformed, scaled) TSS concentration. The red line shows line of best fit, and the dotted black line shows the 1:1 relationship.
 
 ```{r, fig.width = 5, fig.height = 4.5}
 coeff_4plots("ec")
 ```
 
-#### Fig. S1-9. EC. A. Median coefficient estimates (points with thick and thin error bars representing 90 and 95% confidence intervals, respectively) for the fixed effects (and the mean site effect). B. site effects. C. time effect for each site. D. plot of all observed vs predicted values of (transformed, scaled) EC concentration. The red line shows line of best fit, and the dotted black line shows the 1:1 relationship.
+#### Figure S9. EC. A. Median coefficient estimates (points with thick and thin error bars representing 90 and 95% confidence intervals, respectively) for the fixed effects (and the mean site effect). B. site effects. C. time effect for each site. D. plot of all observed vs predicted values of (transformed, scaled) EC concentration. The red line shows line of best fit, and the dotted black line shows the 1:1 relationship.
 
 ```{r, fig.width = 5, fig.height = 4.5}
 coeff_4plots("tem")
 ```
 
-#### Fig. S1-10. Temperature. A. Median coefficient estimates (points with thick and thin error bars representing 90 and 95% confidence intervals, respectively) for the fixed effects (and the mean site effect). B. site effects. C. plot of all observed vs predicted values of (transformed, scaled) temperature. The red line shows line of best fit, and the dotted black line shows the 1:1 relationship.
+#### Figure S10. Temperature. A. Median coefficient estimates (points with thick and thin error bars representing 90 and 95% confidence intervals, respectively) for the fixed effects (and the mean site effect). B. site effects. C. plot of all observed vs predicted values of (transformed, scaled) temperature. The red line shows line of best fit, and the dotted black line shows the 1:1 relationship.
 
 ## Compilation of tables used in figures
 
@@ -455,7 +456,7 @@ m_3ft_sdr_int_st_p (for Temperature). `wq_methods_F_model_sampling_with_Xpred.Rm
 and saves each model fit with a file name ending in the suffix "\_p". `wq_methods_G_model_prediction.Rmd` uses the model
 fits to compile the following tables:
 
--   new_X\_[varname] is a table of predictions to the new_X set of scenario data, used to plot Figs. 2 and 5. Because
+-   new_X\_[varname] is a table of predictions to the new_X set of scenario data, used to plot Figures 2 and 5. Because
     the set of predictor variables differs among variables, a separate table was compiled for each variable, and the
     eight tables were saved as worksheets in "data/prediction_set.xlsx".
 
@@ -464,17 +465,17 @@ fits to compile the following tables:
     wq_methods_C, which were scaled) to permit simpler calculation of predictions. The coefficients for these models are
     thus saved as "data/coeffs_8vars_unscaled.csv", to distinguish them from the models sampled in
     wq_methods_D\_model_selection.Rmd, which were scaled to permit plotting of coefficients on a comparable scale as in
-    Fig. 2.
+    Figure 2.
 
 -   the mean predicted value for each data point, together with the observed value were saved as a table [var]\_oe for
-    each variable, and the eight tables were saved as a list (i.e. an R object), "data/oe_list_8vars.rda" (used in Figs.
-    S1-3 to S1-10).
+    each variable, and the eight tables were saved as a list (i.e. an R object), "data/oe_list_8vars.rda" (used in
+    Figures S3 to S10).
 
 -   A table of differences between S, predicted values given achieved SCM implementation, N, predicted values assuming
     no SCM implementation, and R predicted values in the absence of stormwater (and septic) impacts, for each value at
-    each of the six experimental sites, saved as "data/comparisons.csv" used to plot Fig. 4.
+    each of the six experimental sites, saved as "data/comparisons.csv" used to plot Figure 4.
 
 Neither the model structure objects nor the fitted model objects were saved in the OSF repository, because of their
 large sizes: the code in the model compilation and model sampling documents needs to be run to recreate them.
 
-## References
+## S1 Literature cited

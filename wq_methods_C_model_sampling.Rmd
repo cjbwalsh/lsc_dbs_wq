@@ -17,15 +17,12 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE,
                       message = FALSE, error = FALSE)
 library(rstan); library(loo); library(magrittr)
 # Check all files on OSF are in data directory - if not download them
-source("code/load_data_from_OSF.R")
-
+source("load_data_from_OSF.R")
 # Set a directory for storing the (large) model objects: 
 # I used a directory on a network drive 
 # (the directory needs three sub-directories: data, model_fits and compiled_models)
 mod_dir <- "[Network Drive]/git-data/lsc_dbs_wq/"
-
-
-rstan_options(auto_write = TRUE)
+rstan::rstan_options(auto_write = TRUE)
 options(mc.cores = 4)
 nChains <- 4
 ```
