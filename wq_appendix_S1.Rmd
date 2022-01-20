@@ -1,13 +1,12 @@
 ---
-title: "Dispersed urban-stormwater control improved stream water quality in a catchment-scale experiment"
-subtitle: "Appendix S1. Statistical methods and code"
+title: "Supporting information for 'Dispersed urban-stormwater control improved stream water quality in a catchment-scale experiment'"
 author:
-  - Christopher J. Walsh, Sam J. Imberger, Matthew J. Burns, Darren G. Bos, and Tim D. Fletcher
+  - Christopher J. Walsh, Moss J. Imberger, Matthew J. Burns, Darren G. Bos, and Tim D. Fletcher
 date: "School of Ecosystem and Forest Sciences, The University of Melbourne, 500 Yarra Boulevard, Burnley, 3121 Victoria, Australia"
 output:   
   word_document:
     reference_docx: officedown_template.docx
-csl: ecol-app.csl
+csl: wrr.csl
 bibliography: lsc_dbs_wq.bib
 editor_options: 
   markdown: 
@@ -26,15 +25,23 @@ source("code/misc_functions.R")
 source("load_data_from_OSF.R")
 ```
 
+## Contents of this file
+
+Text S1
+
+Figures S1 to S10
+
+Table S1
+
 ## Introduction
 
 This document describes the methods used to construct the hierarchical linear models used in the paper, "Dispersed
 stormwater control of stream water quality: a catchment-scale experiment" by Walsh et al., to assess the effects of
 dispersed stormwater control measures on stream water quality. All of the code and data used in the manuscript and
-described in this document are publicly available at <https://osf.io/4ywvq/>, and the linked github repository
-[\<https://github.com/cjbwalsh/lsc_dbs_scms\>](https://github.com/cjbwalsh/lsc_dbs_scms){.uri}. If you clone the
-repository to your local computer, running the script `code/load_data_from_OSF.R` will ensure that data files on OSF are
-downloaded to the local appropriate directory. `load_data_from_OSF.R` is run at the start of each of the RMarkdown
+described in this document are publicly available at <https://osf.io/4ywvq/> [@WalshEtAl_wq_2022], and the linked github
+repository [\<https://github.com/cjbwalsh/lsc_dbs_scms\>](https://github.com/cjbwalsh/lsc_dbs_scms){.uri}. If you clone
+the repository to your local computer, running the script `code/load_data_from_OSF.R` will ensure that data files on OSF
+are downloaded to the appropriate local directory. `load_data_from_OSF.R` is run at the start of each of the RMarkdown
 documents described below, and the RMarkdown version of this document.
 
 We constructed the models using seven RMarkdown [@allaire2021] documents:
@@ -67,17 +74,18 @@ We constructed the models using seven RMarkdown [@allaire2021] documents:
 Here, we provide an overview of the data used, and the model structures, diagnostics, fits, and selection. More detail
 can be found in the relevant RMarkdown documents.
 
-## Data
+## Text S1
+
+### Data
 
 The code in `wq_methods_A_data_compilation.Rmd` compiled the data into an excel file, `data/wq_data_compiled.xlsx`, with
 5 worksheets, 'sites', 'wq_data', 'wq_vars', 'new_X', and 'metadata'. The code requires access to databases on Melbourne
 University servers: it is provided to record the process of data compilation.
 
 Data specific to each of the 11 sites is recorded in the 'sites' worksheet. For more information on each of these sites,
-see @WalshEtAl_2022, and its supplementary material and data at <https://doi.org/10.17605/OSF.IO/57AZQ>. Fig 2 in that
-paper is a map of the site locations, illustrating patterns of impervious coverage and connection in the catchments of
-the 11 sites. Data specific to each of the 8 water quality variables is recorded in the 'wq_vars' table (units, methods,
-detection limits).
+see @WalshEtAl_2022, and its supplementary material [@walsh2021]. Fig 2 in that paper is a map of the site locations,
+illustrating patterns of impervious coverage and connection in the catchments of the 11 sites. Data specific to each of
+the 8 water quality variables is recorded in the 'wq_vars' table (units, methods, detection limits).
 
 The 'wq_data' table contains all of the relevant predictor and response variable data for 2,299 samples, each with a
 unique samplecode, a sitecode that links to the sites table, and a date and time when the sample was taken. Values of
@@ -85,47 +93,6 @@ the 10 predictor variables in this table are transformed to reduce leverage in t
 centered or standardised. (They were centered and standardised, as required, in `wq_methods_C_model_sampling.Rmd`).
 There was little correlation among the predictors (Figure S1), except between *t*, the time variable, and *filter,* the
 variable differentiating samples taken with different filters (see below).
-
-```{r fig.width = 6.5, fig.height = 6.5}
-sites <- data.frame(readxl::read_excel("data/wq_data_compiled.xlsx", 
-                                         sheet = "sites"))
-wq_data <- data.frame(readxl::read_excel("data/wq_data_compiled.xlsx", 
-                                         sheet = "wq_data"))
-wq_data$date_time <- lubridate::ymd_hms(wq_data$date_time)
-# center and scale time
-wq_data$t <- as.numeric(wq_data$date_time)
-wq_data$t <- 3*(wq_data$t - (min(wq_data$t) + diff(range(wq_data$t))*0.5) )/ diff(range(wq_data$t))
-# set grouping variables as integers (as expected by Stan)
-wq_data$site_no <- as.integer(wq_data$site_no)
-wq_data$stream_no <- as.integer(wq_data$stream_no)
-# Leave rain1 uncentered, range 0-1.76, and median 0. Useful to have 0 as the median.
-# center and scale rain365 and septic
-wq_data$rain365 <- 3*(wq_data$rain365 - (min(wq_data$rain365) + 
-                                           diff(range(wq_data$rain365))*0.5) )/ diff(range(wq_data$rain365))
-wq_data$septic <- 3*(wq_data$septic - (min(wq_data$septic) + 
-                                           diff(range(wq_data$septic))*0.5) )/ diff(range(wq_data$septic))
-
-#Appropriate transformations for the eight variables
-wq_data$lFRP <- log10(wq_data$FRP)
-wq_data$lTP <- log10(wq_data$TP)
-wq_data$lNH3 <- log10(wq_data$NH3)
-wq_data$lTSS <- log10(wq_data$TSS)
-wq_data$sNOx <- wq_data$NOx^0.5
-wq_data$lTN <- log10(wq_data$TN)
-wq_data$sEC <- wq_data$EC^0.5
-wq_data$lTem <- log10(wq_data$Tem)
-
-ys <- c("lFRP","lTP","lNH3","lTSS","lTN","sNOx","sEC","lTem")
-vars <- c("frp","tp","nh3","tss","tn","nox","ec","tem")
-
-pairs(wq_data[c("degrd","restr","rain1","rain365","channel",
-                "season","diel","septic","filter","t")], 
-      lower.panel = panel.smooth, upper.panel = panel.cor,
-      gap=0, row1attop=FALSE)
-
-```
-
-#### Figure S1. Correlations among the ten predictor variables. Red lines are spline smoothers, and the correlations above the diagonal are sized proportionally to the size of the correlation.
 
 The values of the eight response variables in the 'wq_data' table are untransformed data with units as defined in the
 'Unit in wq_data' field in the 'wq_vars' table. Note that for some variables, different units (as defined in the 'Unit
@@ -135,7 +102,7 @@ The 'new_X' table is a template used in `wq_methods_F_model_sampling_with_Xpred.
 counterfactual plots in the paper. The 'metadata' table provides a definition of each column of tables in the other
 worksheets.
 
-## Candidate models
+### Candidate models
 
 In each model the response variable *y*: one of transformed filterable reactive phosphorus (FRP), total phosphorus (TP),
 Ammonium (NH~4~^+^), total suspended solids (TSS), nitrate + nitrite (NO~x~), total nitrogen (TN), electrical
@@ -171,7 +138,7 @@ The simplest model is coded as `m_1`, with predictor variables:
 More complex candidate models were calculated by adding additional variables of relevance to each response variable, as
 described in the paper. To reduce the number of Stan models to be compiled, additional variables were coded as 'add1',
 'add2', 'add3', and 'add4', and relevant predictors were assigned to each of these variables at the model sampling
-stage. XXX general model structures were compiled in `wq_methods_B_model_compilation.Rmd`, and these were used to sample
+stage. 41 general model structures were compiled in `wq_methods_B_model_compilation.Rmd`, and these were used to sample
 106 specific models in `wq_methods_C_model_sampling.Rmd`.
 
 For each general model structure, the model was sampled in a two-step process. First the model was run without
@@ -184,41 +151,6 @@ The fitted model object for each model with *autoT* and *autoS* terms (objects e
 comparison in `wq_methods_D_model_selection.Rmd`.
 
 ### The effect of changing filter type was near zero and inconsequential
-
-```{r fig.width = 6.5, fig.height = 8.5}
-load("data/figS1-2_data.rda")
-par(mfrow = c(3,2))
-coef_plot_f(m_frp_f_coeffs,m_frp_no_f_coeffs,
-            parameters = c("b_d","b_r","b_p","b_dp","b_rp","t_mu","b_add4"),
-            labels = c("degrd","restr","rain1","degrd:rain1",
-                       "restr:rain1","time (mean)","filter"))
-title(main = "FRP  A.", adj = 0)
-
-plot(ft_posteriors$frp_f,ft_posteriors$frp_t_mu, pch = 16,
-     col = scales::alpha('blue',0.25),
-     xlab = "b_f", ylab = "t_mu", las = 1)
-title(main = "B.", adj = 0)
-
-coef_plot_f(m_nh3_f_coeffs,m_nh3_no_f_coeffs,
-            parameters = c("b_d","b_r","b_p","b_dp","b_rp","t_mu","b_add3"),
-            labels = c("degrd","restr","rain1","degrd:rain1",
-                       "restr:rain1","time (mean)","filter"))
-title(main = "NH4+  C.", adj = 0)
-
-plot(ft_posteriors$nh3_f,ft_posteriors$nh3_t_mu, pch = 16,
-     col = scales::alpha('blue',0.25),
-     xlab = "b_f", ylab = "t_mu", las = 1)
-title(main = "D.", adj = 0)
-
-coef_plot_f(m_nox_f_coeffs,m_nox_no_f_coeffs)
-title(main = "NOx  E.", adj = 0)
-plot(ft_posteriors$nox_f,ft_posteriors$nox_t, pch = 16,
-     col = scales::alpha('blue',0.25),
-     xlab = "b_f", ylab = "b_t", las = 1)
-title(main = "F.", adj = 0)
-```
-
-#### Figure S2. Coefficients (mean, 95% (thin lines) and 80% (thick lines) confidence interval) of the main experimental effects for A. FRP, C. NH~4~^+^, and D. NO~x~, for the best-fit model structure, with (blue) and without (red) a filter variable. The filter coefficient was near zero for FRP and NH~4~^+^, and in both cases the posterior distributions of the effects of time and filter were not correlated. In contrast, the collinear effects of time and filter (F) resulted in a negative filter effect (the opposite of what would be expected mechanistically), and the time effect shifting from near zero to positive when filter was included in the model (E). For all three variables the inclusion of a filter variable had no consequential effect on estimates of other effects (A, C, E).
 
 Figure S2 shows coefficient estimates of the best-fit models for FRP, NH~4~^+^ and NO~x~, with a filter effect, and the
 same model structure without the filter effect. For FRP and NH~4~^+^, models with a filter effect were equally plausible
@@ -271,96 +203,118 @@ paper. The models with generated predictions were compiled using the code in
 `wq_methods_E_model_compilation_with_Xpred.Rmd` and sampled using the code in
 `wq_methods_F_model_sampling_with_Xpred.Rmd`.
 
-#### Table S1. Candidate models trialed for the eight response variables. Every model included the random site predictor and fixed predictors *degrd, restr, rain1, rain1:degrd, rain1:restr, at* and *as*, as specified in the primary model (eq. 3 in the paper). Models with Time = t[site] included a variable time effect for each site (as in eq 3), while those with Time = t included a fixed time effect. Models also differed by the specified additional predictors. The differences (± standard error) in expected log predictive density (ELPD~loo~) from the optimal model (difference = 0) are indicated for each response variable. Equally plausible models to the optimal model are indicated in bold.
-
-```{r, warning=FALSE, message=FALSE, echo=FALSE}
-# See wq_methods_D_model_selection.Rmd for origin of this xslx file
-all_models <- data.frame(readxl::read_excel("data/all_models.xlsx"), stringsAsFactors = FALSE)
-# Remove models with filter effect
-all_models <- all_models[is.na(all_models$filter), names(all_models) != "filter"]
-
-for(i in 1:length(vars)){
-vari <- vars[i]
-modsi <- all_models[tolower(all_models$wq_var) == vari,]
-loosumi <- data.frame(readxl::read_excel("data/loo_sum.xlsx", sheet = vari),
-                      stringsAsFactors = FALSE)
-names(loosumi)[1] <- "model_code"
-#Build a table identifying variables considered beyond base degrd, restr, rain1, degrd:rain1, restr:rain1, autoS, autoT
-add_preds <- modsi[1,12:21]
-add_preds <- paste(names(add_preds)[!is.na(add_preds)],collapse = ", ")
-add_preds <- gsub("\\.",":", add_preds)
-loosumij <- loosumi[loosumi$model_code == modsi$model_code[1],]
-elpd_diff <- ifelse(loosumij$elpd_diff == 0, "0",
-                    paste(round(loosumij$elpd_diff,1), "±", 
-                          round(loosumij$se_diff,1)))
-tabi <- data.frame(var = vars[i],model_code = modsi$model_code[1], 
-                   time = ifelse(is.na(modsi$t[1]),"t[site]","t"),
-                   add_preds = add_preds, elpd_diff = elpd_diff)
-for(j in 2:dim(modsi)[1]){
-add_preds <- modsi[j,12:21]
-add_preds <- paste(names(add_preds)[!is.na(add_preds)],collapse = ", ")
-add_preds <- gsub("\\.",":", add_preds)
-loosumij <- loosumi[loosumi$model_code == modsi$model_code[j],]
-elpd_diff <- ifelse(loosumij$elpd_diff == 0, "0",
-                    paste(round(loosumij$elpd_diff,1), "±", 
-                          round(loosumij$se_diff,1)))
-tabi <- rbind(tabi,
-              data.frame(var = vars[i],model_code = modsi$model_code[j], 
-                   time = ifelse(is.na(modsi$t[j]),"t[site]","t"),
-                   add_preds = add_preds, elpd_diff = elpd_diff))
-}
-if(i == 1){
-  tab_out <- tabi
-}else{
-    tab_out <- rbind(tab_out,tabi)
-  }
-}
-
-
-#Now, FRP, TP, NH3 and TSS used same combinations, as did NOx and TN
-  tab_out1 <- rbind(
-    data.frame(model_code = "FRP, TP, NH4+, TSS",time = NA, add_preds = NA, 
-               stringsAsFactors = FALSE),
-      tab_out[tab_out$var == "frp",-c(1,5)],
-    data.frame(model_code = "NOx, TN",time = NA, add_preds = NA, 
-               stringsAsFactors = FALSE),
-      tab_out[tab_out$var == "nox",-c(1,5)],
-    data.frame(model_code = "EC",time = NA, add_preds = NA, 
-               stringsAsFactors = FALSE),
-      tab_out[tab_out$var == "ec",-c(1,5)],
-    data.frame(model_code = "Temperature",time = NA, add_preds = NA, 
-               stringsAsFactors = FALSE),
-      tab_out[tab_out$var == "tem",-c(1,5)])
-  
-tab_out1$elpd_diff4 <- tab_out1$elpd_diff3 <- tab_out1$elpd_diff2 <- tab_out1$elpd_diff1 <- NA
-tab_out1$elpd_diff1[1:9] <- c("FRP", tab_out$elpd_diff[tab_out$var == "frp"])
-tab_out1$elpd_diff2[1:9] <- c("TP", tab_out$elpd_diff[tab_out$var == "tp"])
-tab_out1$elpd_diff3[1:9] <- c("NH4+", tab_out$elpd_diff[tab_out$var == "nh3"])
-tab_out1$elpd_diff4[1:9] <- c("TSS",tab_out$elpd_diff[tab_out$var == "tss"])
- 
-tab_out1$elpd_diff1[10:26] <- c("NOx",tab_out$elpd_diff[tab_out$var == "nox"])
-tab_out1$elpd_diff2[10:26] <- c("TN",tab_out$elpd_diff[tab_out$var == "tn"])
-
-tab_out1$elpd_diff1[27:31] <- c("EC",tab_out$elpd_diff[tab_out$var == "ec"])
-tab_out1$elpd_diff1[32:38] <- c("Temperature", tab_out$elpd_diff[tab_out$var == "tem"])
-   
-names(tab_out1)[1:4] <- c("Model code","Time parameter","Additional predictors","Difference in ELPD ± SE")
-ft1 <- table_for_word(tab_out1)
-ft1 <- flextable::flextable(tab_out1)
-ft1 <- flextable::merge_at(ft1, i = 1, j = 1:3)
-ft1 <- flextable::merge_at(ft1, i = 10, j = 1:3)
-ft1 <- flextable::merge_at(ft1, i = 27, j = 1:3)
-ft1 <- flextable::merge_at(ft1, i = 32, j = 4:7)
-ft1 <- flextable::merge_at(ft1, i = 32, j = 1:3)
-ft1 <- flextable::merge_at(ft1, j = 4:7, part = "header")
-ft1
-```
-
-## Summaries of model coefficients and fits
+### Summaries of model coefficients and fits
 
 Figures S3 to S10 illustrate the distributions of all parameters for each optimal model, including site-specific
 parameters not illustrated in the main paper. For each model, the mean predicted value for each data point is plotted
 against the observed value, and the Pearson correlation coefficient is reported as an indication of model fit.
+
+### Compilation of tables used in figures
+
+The file `wq_methods_E_model_compilation_with_Xpred.Rmd` compiles a variation of the optimal model structure for each
+variable to include generating predictions to a test dataset. It creates 5 Stan model objects: m_1\_st_p (for EC),
+m_1\_x_st_p (for TP and TSS), m_1\_xx_st_p (for FRP and NH~4~^+^), m_1ft_xxx_int_st_p (for NO~x~ and TN), and
+m_3ft_sdr_int_st_p (for Temperature). `wq_methods_F_model_sampling_with_Xpred.Rmd` samples each of the 8 optimal models
+and saves each model fit with a file name ending in the suffix "\_p". `wq_methods_G_model_prediction.Rmd` uses the model
+fits to compile the following tables:
+
+-   new_X\_[varname] is a table of predictions to the new_X set of scenario data, used to plot Figures 2 and 5. Because
+    the set of predictor variables differs among variables, a separate table was compiled for each variable, and the
+    eight tables were saved as worksheets in "data/prediction_set.xlsx".
+
+-   statistics (50th, 95th, 90th percentile) for predictor coefficients were compiled into a single table,
+    "coeffs_8vars.csv". The models sampled for prediction to new data used unscaled response variables (cf models in
+    wq_methods_C, which were scaled) to permit simpler calculation of predictions. The coefficients for these models are
+    thus saved as "data/coeffs_8vars_unscaled.csv", to distinguish them from the models sampled in
+    wq_methods_D\_model_selection.Rmd, which were scaled to permit plotting of coefficients on a comparable scale as in
+    Figure 2.
+
+-   the mean predicted value for each data point, together with the observed value were saved as a table [var]\_oe for
+    each variable, and the eight tables were saved as a list (i.e. an R object), "data/oe_list_8vars.rda" (used in
+    Figures S3 to S10).
+
+-   A table of differences between S, predicted values given achieved SCM implementation, N, predicted values assuming
+    no SCM implementation, and R predicted values in the absence of stormwater (and septic) impacts, for each value at
+    each of the six experimental sites, saved as "data/comparisons.csv" used to plot Figure 4.
+
+Neither the model structure objects nor the fitted model objects were saved in the OSF repository, because of their
+large sizes: the code in the model compilation and model sampling documents needs to be run to recreate them.
+
+```{r fig.width = 6.5, fig.height = 6.5}
+sites <- data.frame(readxl::read_excel("data/wq_data_compiled.xlsx", 
+                                         sheet = "sites"))
+wq_data <- data.frame(readxl::read_excel("data/wq_data_compiled.xlsx", 
+                                         sheet = "wq_data"))
+wq_data$date_time <- lubridate::ymd_hms(wq_data$date_time)
+# center and scale time
+wq_data$t <- as.numeric(wq_data$date_time)
+wq_data$t <- 3*(wq_data$t - (min(wq_data$t) + diff(range(wq_data$t))*0.5) )/ diff(range(wq_data$t))
+# set grouping variables as integers (as expected by Stan)
+wq_data$site_no <- as.integer(wq_data$site_no)
+wq_data$stream_no <- as.integer(wq_data$stream_no)
+# Leave rain1 uncentered, range 0-1.76, and median 0. Useful to have 0 as the median.
+# center and scale rain365 and septic
+wq_data$rain365 <- 3*(wq_data$rain365 - (min(wq_data$rain365) + 
+                                           diff(range(wq_data$rain365))*0.5) )/ diff(range(wq_data$rain365))
+wq_data$septic <- 3*(wq_data$septic - (min(wq_data$septic) + 
+                                           diff(range(wq_data$septic))*0.5) )/ diff(range(wq_data$septic))
+
+#Appropriate transformations for the eight variables
+wq_data$lFRP <- log10(wq_data$FRP)
+wq_data$lTP <- log10(wq_data$TP)
+wq_data$lNH3 <- log10(wq_data$NH3)
+wq_data$lTSS <- log10(wq_data$TSS)
+wq_data$sNOx <- wq_data$NOx^0.5
+wq_data$lTN <- log10(wq_data$TN)
+wq_data$sEC <- wq_data$EC^0.5
+wq_data$lTem <- log10(wq_data$Tem)
+
+ys <- c("lFRP","lTP","lNH3","lTSS","lTN","sNOx","sEC","lTem")
+vars <- c("frp","tp","nh3","tss","tn","nox","ec","tem")
+
+pairs(wq_data[c("degrd","restr","rain1","rain365","channel",
+                "season","diel","septic","filter","t")], 
+      lower.panel = panel.smooth, upper.panel = panel.cor,
+      gap=0, row1attop=FALSE)
+
+```
+
+#### Figure S1. Correlations among the ten predictor variables. Red lines are spline smoothers, and the correlations above the diagonal are sized proportionally to the size of the correlation.
+
+```{r fig.width = 6.5, fig.height = 8.5}
+load("data/figS1-2_data.rda")
+par(mfrow = c(3,2))
+coef_plot_f(m_frp_f_coeffs,m_frp_no_f_coeffs,
+            parameters = c("b_d","b_r","b_p","b_dp","b_rp","t_mu","b_add4"),
+            labels = c("degrd","restr","rain1","degrd:rain1",
+                       "restr:rain1","time (mean)","filter"))
+title(main = "FRP  A.", adj = 0)
+
+plot(ft_posteriors$frp_f,ft_posteriors$frp_t_mu, pch = 16,
+     col = scales::alpha('blue',0.25),
+     xlab = "b_f", ylab = "t_mu", las = 1)
+title(main = "B.", adj = 0)
+
+coef_plot_f(m_nh3_f_coeffs,m_nh3_no_f_coeffs,
+            parameters = c("b_d","b_r","b_p","b_dp","b_rp","t_mu","b_add3"),
+            labels = c("degrd","restr","rain1","degrd:rain1",
+                       "restr:rain1","time (mean)","filter"))
+title(main = "NH4+  C.", adj = 0)
+
+plot(ft_posteriors$nh3_f,ft_posteriors$nh3_t_mu, pch = 16,
+     col = scales::alpha('blue',0.25),
+     xlab = "b_f", ylab = "t_mu", las = 1)
+title(main = "D.", adj = 0)
+
+coef_plot_f(m_nox_f_coeffs,m_nox_no_f_coeffs)
+title(main = "NOx  E.", adj = 0)
+plot(ft_posteriors$nox_f,ft_posteriors$nox_t, pch = 16,
+     col = scales::alpha('blue',0.25),
+     xlab = "b_f", ylab = "b_t", las = 1)
+title(main = "F.", adj = 0)
+```
+
+#### Figure S2. Coefficients (mean, 95% (thin lines) and 80% (thick lines) confidence interval) of the main experimental effects for A. FRP, C. NH~4~^+^, and D. NO~x~, for the best-fit model structure, with (blue) and without (red) a filter variable. The filter coefficient was near zero for FRP and NH~4~^+^, and in both cases the posterior distributions of the effects of time and filter were not correlated. In contrast, the collinear effects of time and filter (F) resulted in a negative filter effect (the opposite of what would be expected mechanistically), and the time effect shifting from near zero to positive when filter was included in the model (E). For all three variables the inclusion of a filter variable had no consequential effect on estimates of other effects (A, C, E).
 
 ```{r, fig.width = 5, fig.height = 4.5}
 # Import coefficient and fit data compiled in methods_D
@@ -447,35 +401,91 @@ coeff_4plots("tem")
 
 #### Figure S10. Temperature. A. Median coefficient estimates (points with thick and thin error bars representing 90 and 95% confidence intervals, respectively) for the fixed effects (and the mean site effect). B. site effects. C. plot of all observed vs predicted values of (transformed, scaled) temperature. The red line shows line of best fit, and the dotted black line shows the 1:1 relationship.
 
-## Compilation of tables used in figures
+#### Table S1. Candidate models trialed for the eight response variables. Every model included the random site predictor and fixed predictors *degrd, restr, rain1, rain1:degrd, rain1:restr, at* and *as*, as specified in the primary model (eq. 3 in the paper). Models with Time = t[site] included a variable time effect for each site (as in eq 3), while those with Time = t included a fixed time effect. Models also differed by the specified additional predictors. The differences (± standard error) in expected log predictive density (ELPD~loo~) from the optimal model (difference = 0) are indicated for each response variable. Equally plausible models to the optimal model are indicated in bold.
 
-The file `wq_methods_E_model_compilation_with_Xpred.Rmd` compiles a variation of the optimal model structure for each
-variable to include generating predictions to a test dataset. It creates 5 Stan model objects: m_1\_st_p (for EC),
-m_1\_x_st_p (for TP and TSS), m_1\_xx_st_p (for FRP and NH~4~^+^), m_1ft_xxx_int_st_p (for NO~x~ and TN), and
-m_3ft_sdr_int_st_p (for Temperature). `wq_methods_F_model_sampling_with_Xpred.Rmd` samples each of the 8 optimal models
-and saves each model fit with a file name ending in the suffix "\_p". `wq_methods_G_model_prediction.Rmd` uses the model
-fits to compile the following tables:
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+# See wq_methods_D_model_selection.Rmd for origin of this xslx file
+all_models <- data.frame(readxl::read_excel("data/all_models.xlsx"), stringsAsFactors = FALSE)
+# Remove models with filter effect
+all_models <- all_models[is.na(all_models$filter), names(all_models) != "filter"]
 
--   new_X\_[varname] is a table of predictions to the new_X set of scenario data, used to plot Figures 2 and 5. Because
-    the set of predictor variables differs among variables, a separate table was compiled for each variable, and the
-    eight tables were saved as worksheets in "data/prediction_set.xlsx".
+for(i in 1:length(vars)){
+vari <- vars[i]
+modsi <- all_models[tolower(all_models$wq_var) == vari,]
+loosumi <- data.frame(readxl::read_excel("data/loo_sum.xlsx", sheet = vari),
+                      stringsAsFactors = FALSE)
+names(loosumi)[1] <- "model_code"
+#Build a table identifying variables considered beyond base degrd, restr, rain1, degrd:rain1, restr:rain1, autoS, autoT
+add_preds <- modsi[1,12:21]
+add_preds <- paste(names(add_preds)[!is.na(add_preds)],collapse = ", ")
+add_preds <- gsub("\\.",":", add_preds)
+loosumij <- loosumi[loosumi$model_code == modsi$model_code[1],]
+elpd_diff <- ifelse(loosumij$elpd_diff == 0, "0",
+                    paste(round(loosumij$elpd_diff,1), "±", 
+                          round(loosumij$se_diff,1)))
+tabi <- data.frame(var = vars[i],model_code = modsi$model_code[1], 
+                   time = ifelse(is.na(modsi$t[1]),"t[site]","t"),
+                   add_preds = add_preds, elpd_diff = elpd_diff)
+for(j in 2:dim(modsi)[1]){
+add_preds <- modsi[j,12:21]
+add_preds <- paste(names(add_preds)[!is.na(add_preds)],collapse = ", ")
+add_preds <- gsub("\\.",":", add_preds)
+loosumij <- loosumi[loosumi$model_code == modsi$model_code[j],]
+elpd_diff <- ifelse(loosumij$elpd_diff == 0, "0",
+                    paste(round(loosumij$elpd_diff,1), "±", 
+                          round(loosumij$se_diff,1)))
+tabi <- rbind(tabi,
+              data.frame(var = vars[i],model_code = modsi$model_code[j], 
+                   time = ifelse(is.na(modsi$t[j]),"t[site]","t"),
+                   add_preds = add_preds, elpd_diff = elpd_diff))
+}
+if(i == 1){
+  tab_out <- tabi
+}else{
+    tab_out <- rbind(tab_out,tabi)
+  }
+}
 
--   statistics (50th, 95th, 90th percentile) for predictor coefficients were compiled into a single table,
-    "coeffs_8vars.csv". The models sampled for prediction to new data used unscaled response variables (cf models in
-    wq_methods_C, which were scaled) to permit simpler calculation of predictions. The coefficients for these models are
-    thus saved as "data/coeffs_8vars_unscaled.csv", to distinguish them from the models sampled in
-    wq_methods_D\_model_selection.Rmd, which were scaled to permit plotting of coefficients on a comparable scale as in
-    Figure 2.
 
--   the mean predicted value for each data point, together with the observed value were saved as a table [var]\_oe for
-    each variable, and the eight tables were saved as a list (i.e. an R object), "data/oe_list_8vars.rda" (used in
-    Figures S3 to S10).
+#Now, FRP, TP, NH3 and TSS used same combinations, as did NOx and TN
+  tab_out1 <- rbind(
+    data.frame(model_code = "FRP, TP, NH4+, TSS",time = NA, add_preds = NA, 
+               stringsAsFactors = FALSE),
+      tab_out[tab_out$var == "frp",-c(1,5)],
+    data.frame(model_code = "NOx, TN",time = NA, add_preds = NA, 
+               stringsAsFactors = FALSE),
+      tab_out[tab_out$var == "nox",-c(1,5)],
+    data.frame(model_code = "EC",time = NA, add_preds = NA, 
+               stringsAsFactors = FALSE),
+      tab_out[tab_out$var == "ec",-c(1,5)],
+    data.frame(model_code = "Temperature",time = NA, add_preds = NA, 
+               stringsAsFactors = FALSE),
+      tab_out[tab_out$var == "tem",-c(1,5)])
+  
+tab_out1$elpd_diff4 <- tab_out1$elpd_diff3 <- tab_out1$elpd_diff2 <- tab_out1$elpd_diff1 <- NA
+tab_out1$elpd_diff1[1:9] <- c("FRP", tab_out$elpd_diff[tab_out$var == "frp"])
+tab_out1$elpd_diff2[1:9] <- c("TP", tab_out$elpd_diff[tab_out$var == "tp"])
+tab_out1$elpd_diff3[1:9] <- c("NH4+", tab_out$elpd_diff[tab_out$var == "nh3"])
+tab_out1$elpd_diff4[1:9] <- c("TSS",tab_out$elpd_diff[tab_out$var == "tss"])
+ 
+tab_out1$elpd_diff1[10:26] <- c("NOx",tab_out$elpd_diff[tab_out$var == "nox"])
+tab_out1$elpd_diff2[10:26] <- c("TN",tab_out$elpd_diff[tab_out$var == "tn"])
 
--   A table of differences between S, predicted values given achieved SCM implementation, N, predicted values assuming
-    no SCM implementation, and R predicted values in the absence of stormwater (and septic) impacts, for each value at
-    each of the six experimental sites, saved as "data/comparisons.csv" used to plot Figure 4.
+tab_out1$elpd_diff1[27:31] <- c("EC",tab_out$elpd_diff[tab_out$var == "ec"])
+tab_out1$elpd_diff1[32:38] <- c("Temperature", tab_out$elpd_diff[tab_out$var == "tem"])
+   
+names(tab_out1)[1:4] <- c("Model code","Time parameter","Additional predictors","Difference in ELPD ± SE")
+ft1 <- table_for_word(tab_out1)
+ft1 <- flextable::flextable(tab_out1)
+ft1 <- flextable::merge_at(ft1, i = 1, j = 1:3)
+ft1 <- flextable::merge_at(ft1, i = 10, j = 1:3)
+ft1 <- flextable::merge_at(ft1, i = 27, j = 1:3)
+ft1 <- flextable::merge_at(ft1, i = 32, j = 4:7)
+ft1 <- flextable::merge_at(ft1, i = 32, j = 1:3)
+ft1 <- flextable::merge_at(ft1, j = 4:7, part = "header")
+ft1
+```
 
-Neither the model structure objects nor the fitted model objects were saved in the OSF repository, because of their
-large sizes: the code in the model compilation and model sampling documents needs to be run to recreate them.
+## 
 
-## S1 Literature cited
+## References
