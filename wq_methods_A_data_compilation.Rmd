@@ -334,37 +334,41 @@ the database, the commented out first line of the chunk below downloads the data
 from the data repository of @WalshEtAl_2021.
 
 ```{r}
-#source("code/build_ei_data.R")
-ei_ts <- sqlQuery("SELECT * FROM Treatments;", "lsc")[,-1]
-ei_ts$date <- as.Date(ei_ts$date)
+#source("code/build_ei_data.R") 
+# ei_ts <-  sqlQuery("SELECT * FROM Treatments;", "lsc")[,-1]
+load("data/ei_ts_11_sites_correct.rda")
+ei_ts_all$date <- as.Date(ei_ts_all$date)
 # confusing names need changing
-names(ei_ts)[match(c("ei","eb","wq","fv","vr","ro","s"),names(ei_ts))] <-
+names(ei_ts_all)[match(c("ei","eb","wq","fv","vr","ro","s"),names(ei_ts_all))] <-
        c("ei_s1","ei_s","ei_sw","ei_sf","ei_sv","ei_sr","ei_s0")
 # Compile site statistics for Table 1
 for(i in 1:dim(sites)[1]){
-  sites$EI_S1_2001[i] <- min(ei_ts$ei_s1[ei_ts$sitecode == sites$sitecode[i]])
-  sites$EI_S1_2019[i] <- max(ei_ts$ei_s1[ei_ts$sitecode == sites$sitecode[i]])
-  sites$EI_S_2019[i] <- tail(ei_ts$ei_s[ei_ts$sitecode == sites$sitecode[i]],1)
+  sites$EI_S1_2001[i] <- min(ei_ts_all$ei_s1[ei_ts_all$sitecode == sites$sitecode[i]])
+  sites$EI_S1_2019[i] <- max(ei_ts_all$ei_s1[ei_ts_all$sitecode == sites$sitecode[i]])
+  sites$EI_S_2019[i] <- tail(ei_ts_all$ei_s[ei_ts_all$sitecode == sites$sitecode[i]],1)
+  sites$TI_2019[i] <- tail(ei_ts_all$ti[ei_ts_all$sitecode == sites$sitecode[i]],1)
 }
+#error in ei_ts TI series for DBS sites: double counting of impervious surfaces.  EI estimates ok...
+
 # Calculate indices matching those reported in Walsh et al. 2021 
 # EI_s1, EI_s1, and EI_s0 as in Fig. 4 of Walsh et al. 2021
 # (all three are equivalent from the reference and control catchments)
-ei_ts$lei_s <- log10(ei_ts$ei_s * 100 + 0.1)
-ei_ts$lei_s1 <- log10(ei_ts$ei_s1 * 100 + 0.1)
-ei_ts$lei_s0 <- log10(ei_ts$ei_s0 * 100 + 0.1)
+ei_ts_all$lei_s <- log10(ei_ts_all$ei_s * 100 + 0.1)
+ei_ts_all$lei_s1 <- log10(ei_ts_all$ei_s1 * 100 + 0.1)
+ei_ts_all$lei_s0 <- log10(ei_ts_all$ei_s0 * 100 + 0.1)
 # del_EI_s and del_EI_s0 as in Fig. 5 of Walsh et al. 2021
-ei_ts$del_ei_s <-  ei_ts$lei_s - ei_ts$lei_s1
-ei_ts$del_ei_s0 <-  ei_ts$lei_s0 - ei_ts$lei_s1
-# with(ei_ts[ei_ts$sitecode == "LSN0001",],
+ei_ts_all$del_ei_s <-  ei_ts_all$lei_s - ei_ts_all$lei_s1
+ei_ts_all$del_ei_s0 <-  ei_ts_all$lei_s0 - ei_ts_all$lei_s1
+# with(ei_ts_all[ei_ts_all$sitecode == "LSN0001",],
 #      plot(date, lei_s0, type = 'l', ylim = c(-1.5,1)))
-# with(ei_ts[ei_ts$sitecode == "LSN0001",],
+# with(ei_ts_all[ei_ts_all$sitecode == "LSN0001",],
 #      lines(date, del_ei_s, col = "red"))
-# with(ei_ts[ei_ts$sitecode == "LSN0001",],
+# with(ei_ts_all[ei_ts_all$sitecode == "LSN0001",],
 #      lines(date, del_ei_s0, col = "green"))
 wq_data_ct$lei_s1 <- 
-    ei_ts$lei_s1[match(paste(wq_data_ct$sitecode,as.Date(wq_data_ct$date_time)),paste(ei_ts$sitecode,ei_ts$date))]
+    ei_ts_all$lei_s1[match(paste(wq_data_ct$sitecode,as.Date(wq_data_ct$date_time)),paste(ei_ts_all$sitecode,ei_ts_all$date))]
 wq_data_ct$del_ei_s <- 
-    ei_ts$del_ei_s[match(paste(wq_data_ct$sitecode,as.Date(wq_data_ct$date_time)),paste(ei_ts$sitecode,ei_ts$date))]
+    ei_ts_all$del_ei_s[match(paste(wq_data_ct$sitecode,as.Date(wq_data_ct$date_time)),paste(ei_ts_all$sitecode,ei_ts_all$date))]
 #important values for predicting to:
 #-1 as a stretch, then 6 evenly(-ish) spaced del_ei values matching what was 
 # achieved in our six experimental creeks, + zero for the base case
