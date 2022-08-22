@@ -3,7 +3,7 @@
 .RData
 .Ruserdata
 *.docx
-!officedown_template.docx
+!AGU_Manuscript_template.docx
 *.html
 *.Rproj
 wq_methods_F_model_sampling_with_Xpred_backup.Rmd
