@@ -22,7 +22,7 @@ lapply(requiredPackages, require, character.only = TRUE, quietly = TRUE)
 # Bespoke functions used in the document (table_for_word(),)
 source("code/misc_functions.R")  
 # Check all files on OSF are in data directory - if not download them
-source("load_data_from_OSF.R")
+source("code/load_data_from_OSF.R")
 ```
 
 ## Contents of this file
@@ -292,7 +292,7 @@ title(main = "FRP  A.", adj = 0)
 
 plot(ft_posteriors$frp_f,ft_posteriors$frp_t_mu, pch = 16,
      col = scales::alpha('blue',0.25),
-     xlab = "b_f", ylab = "t_mu", las = 1)
+     xlab = "b_f (effect of filter)", ylab = "t_mu (mean effect of time)", las = 1)
 title(main = "B.", adj = 0)
 
 coef_plot_f(m_nh3_f_coeffs,m_nh3_no_f_coeffs,
@@ -303,18 +303,18 @@ title(main = "NH4+  C.", adj = 0)
 
 plot(ft_posteriors$nh3_f,ft_posteriors$nh3_t_mu, pch = 16,
      col = scales::alpha('blue',0.25),
-     xlab = "b_f", ylab = "t_mu", las = 1)
+     xlab = "b_f (effect of filter)", ylab = "t_mu (mean effect of time)", las = 1)
 title(main = "D.", adj = 0)
 
 coef_plot_f(m_nox_f_coeffs,m_nox_no_f_coeffs)
 title(main = "NOx  E.", adj = 0)
 plot(ft_posteriors$nox_f,ft_posteriors$nox_t, pch = 16,
      col = scales::alpha('blue',0.25),
-     xlab = "b_f", ylab = "b_t", las = 1)
+     xlab = "b_f (effect of filter)", ylab = "b_t (effect of time)", las = 1)
 title(main = "F.", adj = 0)
 ```
 
-#### Figure S2. Coefficients (mean, 95% (thin lines) and 80% (thick lines) confidence interval) of the main experimental effects for A. FRP, C. NH~4~^+^, and D. NO~x~, for the best-fit model structure, with (blue) and without (red) a filter variable. The filter coefficient was near zero for FRP and NH~4~^+^, and in both cases the posterior distributions of the effects of time and filter were not correlated. In contrast, the collinear effects of time and filter (F) resulted in a negative filter effect (the opposite of what would be expected mechanistically), and the time effect shifting from near zero to positive when filter was included in the model (E). For all three variables the inclusion of a filter variable had no consequential effect on estimates of other effects (A, C, E).
+#### Figure S2. Coefficients (mean, 95% (thin lines) and 80% (thick lines) confidence interval) of the main experimental effects for A. FRP, C. NH~4~^+^, and D. NO~x~, for the best-fit model structure, with (blue) and without (red) a filter variable. The filter coefficient was near zero for FRP and NH~4~^+^, and in both cases the posterior distributions of the effects of time (t_mu) and filter (b_f) were not correlated. In contrast, the collinear effects of time (b_t) and filter (b_f) resulted in a negative filter effect (the opposite of what would be expected mechanistically), and the time effect shifting from near zero to positive when filter was included in the model (E). For all three variables the inclusion of a filter variable had no consequential effect on estimates of other effects (A, C, E).
 
 ```{r, fig.width = 5, fig.height = 4.5}
 # Import coefficient and fit data compiled in methods_D
@@ -401,7 +401,7 @@ coeff_4plots("tem")
 
 #### Figure S10. Temperature. A. Median coefficient estimates (points with thick and thin error bars representing 90 and 95% confidence intervals, respectively) for the fixed effects (and the mean site effect). B. site effects. C. plot of all observed vs predicted values of (transformed, scaled) temperature. The red line shows line of best fit, and the dotted black line shows the 1:1 relationship.
 
-#### Table S1. Candidate models trialed for the eight response variables. Every model included the random site predictor and fixed predictors *degrd, restr, rain1, rain1:degrd, rain1:restr, at* and *as*, as specified in the primary model (eq. 3 in the paper). Models with Time = t[site] included a variable time effect for each site (as in eq 3), while those with Time = t included a fixed time effect. Models also differed by the specified additional predictors. The differences (± standard error) in expected log predictive density (ELPD~loo~) from the optimal model (difference = 0) are indicated for each response variable. Equally plausible models to the optimal model are indicated in bold.
+#### Table S1. Candidate models trialed for the eight response variables. Every model included the random site predictor and fixed predictors *degrd, restr, rain1, rain1:degrd, rain1:restr, at* and *as*, as specified in the primary model (eq. 3 in the paper). Models with Time = t[site] included a variable time effect for each site (as in eq 3), while those with Time = t included a fixed time effect. Models also differed by the specified additional predictors. The differences (± standard error) in expected log predictive density (ELPD~loo~) from the optimal model (difference = 0) are indicated for each response variable. Equally plausible models to the optimal model (difference in ELPD~loo~ greater than 4 or greater than twice the standard error of the difference) are indicated in bold.
 
 ```{r, warning=FALSE, message=FALSE, echo=FALSE}
 # See wq_methods_D_model_selection.Rmd for origin of this xslx file

@@ -832,9 +832,9 @@ degrd_v_restr_plot4_in32 <- function(response_var, new_X_set,
                                        diff(range(sites$septic))*0.5) )/diff(range(sites$septic))
   exp_sites <- data.frame(site = c("D8","D4","Ln","L4","Ls","L1"),
                           restr_ind = c(5,6,2,4,3,7),
-                          max_restr = unique(new_X$restr)[c(5,6,2,4,3,7)],
+                          max_restr = unique(new_X_set$restr)[c(5,6,2,4,3,7)],
                           degrd_ind = c(4:8,10),
-                          degrd = unique(new_X$degrd)[c(4:8,10)],
+                          degrd = unique(new_X_set$degrd)[c(4:8,10)],
                           septic = sites$septic[match(c("DBS0008","DBS0004",
                                                         "LSN0001","LIS0004",
                                                         "LSS0001","LIS0001"),sites$sitecode)])
@@ -1022,136 +1022,6 @@ degrd_v_restr_plot4_in32 <- function(response_var, new_X_set,
           col = "#EFC000FF", lwd = 2)
   }
 }
-
-degrd_v_restr_plot4_in32_bu <- function(response_var, new_X_set, 
-                                     xax_labs = FALSE,
-                                     y_transform = "log",
-                                     y_mult = 1, 
-                                     main_lab = "A."){
-  pred_frame <- new_X_set
-  names(pred_frame) <- gsub(response_var, "var", names(pred_frame))
-  ei_rain10 <- pred_frame[pred_frame$restr == 0 & pred_frame$rain1 == 0,]
-  ei_rain12 <- pred_frame[pred_frame$restr == 0 & pred_frame$rain1 == unique(pred_frame$rain1)[3],]
-  ei_rain18 <- pred_frame[pred_frame$restr == 0 & pred_frame$rain1 == unique(pred_frame$rain1)[5],]
-  ei_rain120 <- pred_frame[pred_frame$restr == 0 & pred_frame$rain1 == unique(pred_frame$rain1)[7],]
-  if(y_transform == "log"){
-    if(max(ei_rain120$var_975) > log10(20) & max(ei_rain120$var_975) <  log10(35)){ #i.e. temperature
-      yticks <- yticklabs <- 1:30
-    }else{
-      yticks <- c(seq(0.001,0.01,0.001),seq(0.02,0.1,0.01),seq(0.2,1,0.1),2:10,seq(20,100,10),seq(200,1000,100)) 
-      yticklabs <- c(0.002,0.003,0.005,0.01,0.02,0.03,0.05,0.1,0.3,1,3,10,30,100,300,1000) * y_mult
-    }
-  }else{
-    if(max(ei_rain10$var_975) > sqrt(500)){ # i.e. EC
-      yticks <-  seq(0,1000,100)
-      yticklabs <-  seq(0,1000,100) * y_mult
-    }else{
-      yticks <- seq(0,2,0.1) 
-      yticklabs <-  seq(0,2,0.1) * y_mult
-    }
-  }
-  par(mar = c(1,2,0,1))
-  plot(c(-1,1.5),range(c(ei_rain10$var_025, ei_rain120$var_975,ei_rain10$var_975, ei_rain120$var_025)),type = 'n',
-       axes = FALSE, xlab = "", ylab = "")
-  if(xax_labs){xaxis_labs <- c(0,0.1,0.3,1,3,10,30)} else{xaxis_labs <- rep("",7)}
-  axis(1,at = log10(c(0,0.1,0.3,1,3,10,30) + 0.1), labels = xaxis_labs)
-  if(y_transform == "log"){
-    axis(2,at = log10(yticks), labels = rep("",length(yticks)))
-    axis(2,at = log10(yticklabs/y_mult), labels = yticklabs, las = 1)
-  }else{
-    axis(2, at = yticks^0.5, labels = yticklabs, las = 1)
-  }
-  title(main = paste0(" ",main_lab), adj = 0, line = -1)
-  box(bty = 'l')
-  rethinking::shade(t(ei_rain10[,c("var_025","var_975")]),
-                    ei_rain10$degrd,col = scales::alpha("#0073C2FF", 0.7))
-  lines(ei_rain10$degrd, ei_rain10$var_mean, lwd = 1, col = "#0073C2FF")
-  for(i in 1:dim(exp_sites)[1]){
-    max_restr <- pred_frame[pred_frame$restr == exp_sites$max_restr[i] & pred_frame$degrd == exp_sites$degrd[i] & 
-                              pred_frame$rain1 == 0,]
-    ei_s0 <- exp_sites$degrd[i] + exp_sites$max_restr[i]
-    lines(c(ei_rain10$degrd[exp_sites$degrd_ind[i]],ei_s0),
-          c(ei_rain10$var_mean[exp_sites$degrd_ind[i]],max_restr$var_mean),
-          col = "#EFC000FF", lwd = 2)
-    points(ei_rain10$degrd[exp_sites$degrd_ind[i]], ei_rain10$var_mean[exp_sites$degrd_ind[i]], 
-           pch = 21, bg = "lightblue", col = "darkblue", cex = 1)
-    points(ei_s0,max_restr$var_mean, pch = 21, bg = "#EFC000FF", col = "black", cex = 1)
-  }
-  par(mar = c(1,0,0,1))
-  plot(c(-1,1.5),range(c(ei_rain10$var_025, ei_rain120$var_975,ei_rain10$var_975, ei_rain120$var_025)),type = 'n',
-       axes = FALSE, xlab = "", ylab = "")
-  axis(1,at = log10(c(0,0.1,0.3,1,3,10,30) + 0.1), labels = xaxis_labs)
-  if(y_transform == "log"){
-    axis(2,at = log10(yticks), labels = rep("",length(yticks)))
-  }else{
-    axis(2, at = yticks^0.5, labels = rep("", length(yticks)), las = 1)
-  }
-  box(bty = 'l')
-  rethinking::shade(t(ei_rain12[,c("var_025","var_975")]),
-                    ei_rain12$degrd,col = scales::alpha("#0073C2FF", 0.7))
-  lines(ei_rain12$degrd, ei_rain12$var_mean, lwd = 1, col = "#0073C2FF")
-  for(i in 1:dim(exp_sites)[1]){
-    max_restr2 <- pred_frame[pred_frame$restr == exp_sites$max_restr[i] & pred_frame$degrd == exp_sites$degrd[i] &
-                               pred_frame$rain1 == unique(pred_frame$rain1)[3],]
-    ei_s0 <- exp_sites$degrd[i] + exp_sites$max_restr[i]
-    lines(c(ei_rain12$degrd[exp_sites$degrd_ind[i]],ei_s0),
-          c(ei_rain12$var_mean[exp_sites$degrd_ind[i]],max_restr2$var_mean),
-          col = "#EFC000FF", lwd = 2)
-    points(ei_rain12$degrd[exp_sites$degrd_ind[i]], ei_rain12$var_mean[exp_sites$degrd_ind[i]], 
-           pch = 21, bg = "lightblue", col = "darkblue", cex = 1)
-    points(ei_s0,max_restr2$var_mean, pch = 21, bg = "#EFC000FF", col = "black", cex = 1)
-  }
-  
-  plot(c(-1,1.5),range(c(ei_rain10$var_025, ei_rain120$var_975,ei_rain10$var_975, ei_rain120$var_025)),type = 'n',
-       axes = FALSE, xlab = "", ylab = "")
-  axis(1,at = log10(c(0,0.1,0.3,1,3,10,30) + 0.1), labels = xaxis_labs)
-  if(y_transform == "log"){
-    axis(2,at = log10(yticks), labels = rep("",length(yticks)))
-  }else{
-    axis(2, at = yticks^0.5, labels = rep("", length(yticks)), las = 1)
-  }
-  box(bty = 'l')
-  rethinking::shade(t(ei_rain18[,c("var_025","var_975")]),
-                    ei_rain18$degrd,col = scales::alpha("#0073C2FF", 0.7))
-  lines(ei_rain18$degrd, ei_rain18$var_mean, lwd = 1, col = "#0073C2FF")
-  for(i in 1:dim(exp_sites)[1]){
-    max_restr8 <- pred_frame[pred_frame$restr == exp_sites$max_restr[i] & pred_frame$degrd == exp_sites$degrd[i] &
-                               pred_frame$rain1 == unique(pred_frame$rain1)[5],]
-    ei_s0 <- exp_sites$degrd[i] + exp_sites$max_restr[i]
-    lines(c(ei_rain18$degrd[exp_sites$degrd_ind[i]],ei_s0),
-          c(ei_rain18$var_mean[exp_sites$degrd_ind[i]],max_restr8$var_mean),
-          col = "#EFC000FF", lwd = 2)
-    points(ei_rain18$degrd[exp_sites$degrd_ind[i]], ei_rain18$var_mean[exp_sites$degrd_ind[i]], 
-           pch = 21, bg = "lightblue", col = "darkblue", cex = 1)
-    points(ei_s0,max_restr8$var_mean, pch = 21, bg = "#EFC000FF", col = "black", cex = 1)
-  }
-  plot(c(-1,1.5),range(c(ei_rain10$var_025, ei_rain120$var_975,ei_rain10$var_975, ei_rain120$var_025)),type = 'n',
-       axes = FALSE, xlab = "", ylab = "")
-  axis(1,at = log10(c(0,0.1,0.3,1,3,10,30) + 0.1), labels = xaxis_labs)
-  if(y_transform == "log"){
-    axis(2,at = log10(yticks), labels = rep("",length(yticks)))
-  }else{
-    axis(2, at = yticks^0.5, labels = rep("", length(yticks)), las = 1)
-  }
-  box(bty = 'l')
-  rethinking::shade(t(ei_rain120[,c("var_025","var_975")]),
-                    ei_rain120$degrd,col = scales::alpha("#0073C2FF", 0.7))
-  lines(ei_rain18$degrd, ei_rain120$var_mean, lwd = 1, col = "#0073C2FF")
-  for(i in 1:dim(exp_sites)[1]){
-    max_restr20 <- pred_frame[pred_frame$restr == exp_sites$max_restr[i] & pred_frame$degrd == exp_sites$degrd[i] &
-                                pred_frame$rain1 == unique(pred_frame$rain1)[7],]
-    ei_s0 <- exp_sites$degrd[i] + exp_sites$max_restr[i]
-    lines(c(ei_rain120$degrd[exp_sites$degrd_ind[i]],ei_s0),
-          c(ei_rain120$var_mean[exp_sites$degrd_ind[i]],max_restr20$var_mean),
-          col = "#EFC000FF", lwd = 2)
-    points(ei_rain120$degrd[exp_sites$degrd_ind[i]], ei_rain120$var_mean[exp_sites$degrd_ind[i]], 
-           pch = 21, bg = "lightblue", col = "darkblue", cex = 1)
-    points(ei_s0,max_restr20$var_mean, pch = 21, bg = "#EFC000FF", col = "black", cex = 1)
-  }
-}
-
-
-
 
 coef_plot_f <- function(summary_f = NA,  summary_no_f = NA,
                         parameters = c("b_d","b_r","b_p","b_dp","b_rp","b_add1","b_add1p","b_t","b_add4"), 

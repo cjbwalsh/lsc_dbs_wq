@@ -72,8 +72,8 @@ The following chunks compile:
 ```{r eval = FALSE}
 # all_mods <- dir(mod_dir)
 # all_mods <- all_mods[substr(all_mods,1,4) == "fit_" & !grepl("_p",all_mods)]
-# mod_summ <- data.frame(file_name = all_mods, model = NA, response_var = NA, 
-#                        var = NA, channel = NA, season = NA, rain365 = NA, 
+# mod_summ <- data.frame(file_name = all_mods, model = NA, response_var = NA,
+#                        var = NA, channel = NA, season = NA, rain365 = NA,
 #                        septic = NA, optimal_model = 0)
 # for(i in 1:length(all_mods)){
 #   mod_summ$var[i] <- unlist(strsplit(all_mods[i],"_")[[1]][2])
@@ -316,8 +316,8 @@ rm(stacking_wts,pseudobma_wts,loos); gc()
 # m_frp_f_coeffs <- as.data.frame(summary(m_frp_f, pars = c("b_d","b_r","b_p","b_dp","b_rp","b_add4","t_mu"),  #"b_t",
 #                                            probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
 # 
-# # loo_sum$nh3_with_filter  
-# m_1_srf_st is the best model with filter
+# # loo_sum$nh3_with_filter
+# # m_1_srf_st is the best model with filter
 # m_nh3_no_f <- get(load(paste0(mod_dir,"/","fit_nh3_m_1_sr_st.rda")))
 # m_nh3_f <- get(load(paste0(mod_dir,"/","fit_nh3_m_1_srf_st.rda")))
 # m_nh3_no_f_coeffs <- as.data.frame(summary(m_nh3_no_f, pars = c("b_d","b_r","b_p","b_dp","b_rp","t_mu"),  #"b_t",
@@ -325,8 +325,8 @@ rm(stacking_wts,pseudobma_wts,loos); gc()
 # m_nh3_f_coeffs <- as.data.frame(summary(m_nh3_f, pars = c("b_d","b_r","b_p","b_dp","b_rp","b_add3","t_mu"),  #"b_t",
 #                                            probs = c(0.025, 0.10, 0.50, 0.90, 0.975))$summary)
 # 
-# # loo_sum$nox_with_filter  
-# m_1_esrf_int_st is the best model with filter.
+# # loo_sum$nox_with_filter
+# # m_1_esrf_int_st is the best model with filter.
 # m_nox_no_f <- get(load(paste0(mod_dir,"/","fit_nox_m_1ft_esr_int_st.rda")))
 # m_nox_f <- get(load(paste0(mod_dir,"/","fit_nox_m_1ft_esrf_int_st.rda")))
 # m_nox_no_f_coeffs <- as.data.frame(summary(m_nox_no_f, pars = c("b_d","b_r","b_p","b_dp","b_rp","b_add1","b_add1p","b_t"),
