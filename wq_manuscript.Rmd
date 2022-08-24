@@ -273,7 +273,7 @@ implementation of stormwater control at a catchment-scale for protection of stre
 ### 2.1 Study area and experimental design
 
 The study streams are in the Dandenong Ranges on the eastern fringe of the Melbourne metropolitan area, Victoria, in
-temperate south-eastern Australia (Fig. 1a). The study area experiences a warm temperate climate with warm summers and
+temperate south-eastern Australia (Figure 1a). The study area experiences a warm temperate climate with warm summers and
 no dry season [Köppen-Geiger climate classification cfb, @beck2018]. Mean annual rainfall over the study period was
 870--1090 mm among the study catchments. The catchments' soils are generally yellow duplex type soils, with surface
 texture of loamy sand, clay subsurface [@white_etal_1980].
@@ -294,7 +294,7 @@ subcatchments SCMs were a mix of systems that promote exfiltration into catchmen
 raingardens, and stormwater harvesting tanks (Figure 1b, c). Raingardens were primarily bio-infiltration systems without
 under-drains, but some unvegetated infiltration systems were installed on space-limited streetscapes. Most tanks were
 designed to passively discharge water at a low rate to surrounding garden soils (where space permitted). In D4 and D8,
-downpipe diverters were also installed on many houses (Fig. 1c), but these were found to have little capacity to retain
+downpipe diverters were also installed on many houses (Figure 1c), but these were found to have little capacity to retain
 runoff [@WalshEtAl_2022, S4]. Impervious catchment areas ranged from 10^2^ m^2^ (residential rainwater tanks or
 raingardens draining private roof or paving runoff) to 10^4^ m^2^ [e.g., a precinct harvesting system in L4 intercepting
 a council stormwater drain overflowing to a series of raingardens; a 1800-m^2^ vegetated infiltration system in D8
@@ -306,7 +306,7 @@ The determination of temporal changes in EI resulting from urban growth and from
 catchments, was described in detail by @WalshEtAl_2022. Briefly, in 2001, EI ranged from 0 to 1% in the reference
 catchments, and from 2 to 25% the experimental and control catchments (Table 1). Over the 19-year study period, EI grew
 by 0-1% in the reference sites (e.g. Sa grew from 1.04% to 1.05%) and by 4-14% in the experimental and control
-catchments (2001 vs 2019 EI~S1~ in Table 1). SCM implementation in the 6 experimental catchments (Fig. 1) reduced EI by
+catchments (2001 vs 2019 EI~S1~ in Table 1). SCM implementation in the 6 experimental catchments (Figure 1) reduced EI by
 13-68% (2019 EI~S~ vs EI~S1~ in Table 1).
 
 The experimental design thus permitted a comparison of temporal trends in contaminant concentrations in the 6
@@ -467,7 +467,7 @@ box(lwd = 2)
 # dev.off()
 ```
 
-### Fig. 1. a. The 11 monitoring sites and their catchments, coloured as control, experimental or reference. Impervious surfaces (only surfaces inside the study catchments shown) are shaded by their connection to the stormwater drainage system in 2019. Rain gauges used to estimate catchment rainfall are also indicated.The grey rectangle in the map of Central Victoria, Australia, shows the location of the main map. b. Detail of the upper L4 catchment showing council stormwater drainage pipes and all stormwater control measures and their type (see text) installed in the experiment. c. A similar detail of the lower D8 catchment.
+### Figure 1. a. The 11 monitoring sites and their catchments, coloured as control, experimental or reference. Impervious surfaces (only surfaces inside the study catchments shown) are shaded by their connection to the stormwater drainage system in 2019. Rain gauges used to estimate catchment rainfall are also indicated.The grey rectangle in the map of Central Victoria, Australia, shows the location of the main map. b. Detail of the upper L4 catchment showing council stormwater drainage pipes and all stormwater control measures and their type (see text) installed in the experiment. c. A similar detail of the lower D8 catchment.
 
 ### 2.2 Data collection
 
@@ -997,7 +997,7 @@ implications for better SCM design and for urban water management and protection
 
 Stormwater drainage is as much a dry weather problem as a rain-related problem. The conventional approach to stormwater drainage manages the risk of urban flooding, but in doing so, makes the risk of downstream environmental damage a certainty. SCMs installed in this experiment had the greatest influence on stream water quality during dry weather. There were two likely causes for this effect. First, baseflows, diminished by covering of catchment soils by impervious surfaces, were likely augmented by SCMs, as evidenced by reduced temperatures and increased EC. While some of this effect may be filtered flows through the pipe network, and exfiltrated flows through gravel-filled trenches and other elements of the urban karst [@bonneau2018], increased EC suggests that exfiltrated water from SCMs (with low EC, see below) increased the flow of saline groundwater into the streams. These increased groundwater flows likely reduced nutrient concentrations and temperatures of stream baseflows.Second, where we were able to install SCMs that intercepted runoff from entire sub-catchments of pipes that convey runoff from roofs and roads, SCMs prevented dry-weather spills from flowing to the stream. This was true even for the several end-of-pipe SCMs that were suboptimal in that they only had the capacity to retain and treat runoff effectively up to 1-2 mm of rain, but by providing dry-weather interception, they effectively intercepted any dry-weather spills that would otherwise have flowed to the stream.
 
-The saline groundwater in the study catchments is likely a legacy of historic septic tank seepage, and possibly of pre-urban agricultural activities. (Road salting is not practised in the study area.) Most properties in the experimental catchments were sewered between 1985 and 1995 [@sew_2020; @yvw_2020], but some septic tanks remain in all catchments, as the backlog of sewer connections remains an ongoing endeavor [@vicauditgen_2006]. As stormwater flowing through the SCMs, like stormwater runoff in most of Australia [@gernjak_etal_2017], was much less saline than the receiving groundwater in the L4 catchment, it is therefore possible that the SCM-induced increase in EC is temporary, and the legacy salts may flush out in the future. The low EC of reference streams with high septic tank density (Table 1, Fig. 4g) suggests strong connections between groundwater and stream flow can prevent accumulation of salts in catchment soils.  
+The saline groundwater in the study catchments is likely a legacy of historic septic tank seepage, and possibly of pre-urban agricultural activities. (Road salting is not practised in the study area.) Most properties in the experimental catchments were sewered between 1985 and 1995 [@sew_2020; @yvw_2020], but some septic tanks remain in all catchments, as the backlog of sewer connections remains an ongoing endeavor [@vicauditgen_2006]. As stormwater flowing through the SCMs, like stormwater runoff in most of Australia [@gernjak_etal_2017], was much less saline than the receiving groundwater in the L4 catchment, it is therefore possible that the SCM-induced increase in EC is temporary, and the legacy salts may flush out in the future. The low EC of reference streams with high septic tank density (Table 1, Figure 4g) suggests strong connections between groundwater and stream flow can prevent accumulation of salts in catchment soils.  
 
 A second legacy effect may in part explain the lack of effect of SCMs on TSS. While some of the higher TSS
 concentrations found in the reference streams may result from runoff from unsealed (gravel) roads, which typically drain
