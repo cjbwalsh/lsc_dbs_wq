@@ -1,7 +1,7 @@
 ---
 title: "Dispersed urban-stormwater control improved stream water quality in a catchment-scale experiment"
 author:
-  - Christopher J. Walsh, Moss J. Imberger, Matthew J. Burns, Darren G. Bos, and Tim D. Fletcher
+  - Christopher J. Walsh, Moss Imberger, Matthew J. Burns, Darren G. Bos, and Tim D. Fletcher
 date: "School of Ecosystem and Forest Sciences, The University of Melbourne, 500 Yarra Boulevard, Burnley, 3121 Victoria, Australia"
 output:   
   word_document: 
@@ -289,8 +289,7 @@ from 2001 to 2019. From November 2010, four additional experimental sites (L1, L
 downstream of D4, Figure 1a) were added to the sampling program.
 
 The experimental manipulation involved the implementation of 638 SCM projects (consisting of one or more SCMs) from 2009
-to 2012 [@WalshEtAl_2022]. The SCMs were implemented through several engagement programs in the L4 catchment [\@bos2015;
-@burns2015; @walsh2015], and in a parallel program in the D8 catchment led by Melbourne Water [@prosser2015]. In all
+to 2012 [@WalshEtAl_2022]. The SCMs were implemented through several engagement programs in the L4 catchment [@bos2015;@burns2015; @walsh2015], and in a parallel program in the D8 catchment led by Melbourne Water [@prosser2015]. In all
 subcatchments SCMs were a mix of systems that promote exfiltration into catchment soils, which we collectively term
 raingardens, and stormwater harvesting tanks (Figure 1b, c). Raingardens were primarily bio-infiltration systems without
 under-drains, but some unvegetated infiltration systems were installed on space-limited streetscapes. Most tanks were
@@ -503,7 +502,7 @@ average 6-minute rainfall time series was estimated using available gauge data (
 (086076) and Ferny Creek (86266) gauges; Melbourne Water's Brushy Creek (229249A), Dandenong Creek (228373A), Silvan
 (586177), Mt Dandenong (586090), and Mt Evelyn (229690A) gauges, and five gauges installed by the project team over
 different periods in the L4 and D8 catchments), and the Bureau of Meteorology daily rainfall grid (Figure 1, see
-@walshEtAl_2022, S3 for a detailed description of the methods used to calculate catchment-weighted averages). Septic
+@WalshEtAl_2022, S3 for a detailed description of the methods used to calculate catchment-weighted averages). Septic
 tank density was estimated from a dataset of unsewered properties supplied by Yarra Ranges Council in 2000, and
 South-East Water for the D4 catchment in 2016. These data are likely to be reliable for the study period as there were
 no sewer upgrade programs in the study catchments.
@@ -519,7 +518,7 @@ stormwater-related effects of the model are:
 
 -   *restr* the putative restorative effect of SCMs, represented by $\Delta EI_S$, the difference between
     log~10~(*EI~S1~* + 0.1) and log~10~(*EI~S~* + 0.1), where *EI~S~* is effective imperviousness, with impervious areas
-    upstream of SCMs weighted by S, a metric of performance. S measures reduction in uncontrolled runoff frequency,
+    upstream of SCMs weighted by *S*, a metric of performance. *S* measures reduction in uncontrolled runoff frequency,
     runoff volume, and contaminant concentrations, and restoration of filtered flows: see @WalshEtAl_2022
 
 In the before phase of the experiment (2001 to 2009), the six experimental sites had *EI~S1~* values spanning the range
@@ -998,7 +997,7 @@ implications for better SCM design and for urban water management and protection
 
 Stormwater drainage is as much a dry weather problem as a rain-related problem. The conventional approach to stormwater drainage manages the risk of urban flooding, but in doing so, makes the risk of downstream environmental damage a certainty. SCMs installed in this experiment had the greatest influence on stream water quality during dry weather. There were two likely causes for this effect. First, baseflows, diminished by covering of catchment soils by impervious surfaces, were likely augmented by SCMs, as evidenced by reduced temperatures and increased EC. While some of this effect may be filtered flows through the pipe network, and exfiltrated flows through gravel-filled trenches and other elements of the urban karst [@bonneau2018], increased EC suggests that exfiltrated water from SCMs (with low EC, see below) increased the flow of saline groundwater into the streams. These increased groundwater flows likely reduced nutrient concentrations and temperatures of stream baseflows.Second, where we were able to install SCMs that intercepted runoff from entire sub-catchments of pipes that convey runoff from roofs and roads, SCMs prevented dry-weather spills from flowing to the stream. This was true even for the several end-of-pipe SCMs that were suboptimal in that they only had the capacity to retain and treat runoff effectively up to 1-2 mm of rain, but by providing dry-weather interception, they effectively intercepted any dry-weather spills that would otherwise have flowed to the stream.
 
-The saline groundwater in the study catchments is likely a legacy of historic septic tank seepage, and possibly of pre-urban agricultural activities. (Road salting is not practised in the study area.) Most properties in the experimental catchments were sewered between 1985 and 1995 [@sew_2020; @yvw_2020], but some septic tanks remain in all catchments, as the backlog of sewer connections remains an ongoing endeavor [@vicauditgen_2006]. As stormwater flowing through the SCMs, like stormwater runoff in most of Australia [@gernjak_etal_2017], was much less saline than the receiving groundwater in the L4 catchment, it is therefore possible that the SCM-induced increase in EC is temporary, and the legacy salts may flush out in the future.
+The saline groundwater in the study catchments is likely a legacy of historic septic tank seepage, and possibly of pre-urban agricultural activities. (Road salting is not practised in the study area.) Most properties in the experimental catchments were sewered between 1985 and 1995 [@sew_2020; @yvw_2020], but some septic tanks remain in all catchments, as the backlog of sewer connections remains an ongoing endeavor [@vicauditgen_2006]. As stormwater flowing through the SCMs, like stormwater runoff in most of Australia [@gernjak_etal_2017], was much less saline than the receiving groundwater in the L4 catchment, it is therefore possible that the SCM-induced increase in EC is temporary, and the legacy salts may flush out in the future. The low EC of reference streams with high septic tank density (Table 1, Fig. 4g) suggests strong connections between groundwater and stream flow can prevent accumulation of salts in catchment soils.  
 
 A second legacy effect may in part explain the lack of effect of SCMs on TSS. While some of the higher TSS
 concentrations found in the reference streams may result from runoff from unsealed (gravel) roads, which typically drain
@@ -1179,7 +1178,7 @@ Protection and ecologically successful restoration of river and stream ecosystem
 +-----------------------------------------------------------+-----------------------------------------------------------+
 | [**CLIMATE CHANGE (*time* effect)**]{.underline}          |                                                           |
 +-----------------------------------------------------------+-----------------------------------------------------------+
-| 9.  Potential reduced dry weather flows                   | Yes: : likely increased dry-weather flows inferred from   |
+| 9.  Potential reduced dry weather flows                   | Yes: likely increased dry-weather flows inferred from   |
 |                                                           | reduced dry-weather temperature, increased EC             |
 +-----------------------------------------------------------+-----------------------------------------------------------+
 | 10.  Warming                                              | Yes: reduced temperature                                  |
@@ -1217,5 +1216,5 @@ Hines conducted the laboratory analyses. We thank Lee Hazel for guidance with mo
 information and Vaughn Grey, Matt Potter, Rhys Coleman and Judy Blackbeard for comments on the manuscript.
 
 Sampling in reference streams was conducted with Parks Victoria research permits (10007079, 10007127 and 10008347).
-
+s
 ## References

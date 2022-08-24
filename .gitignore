@@ -3,6 +3,7 @@
 .RData
 .Ruserdata
 *.docx
+!officedown_template.docx
 !AGU_Manuscript_template.docx
 *.html
 *.Rproj
@@ -10,6 +11,7 @@ wq_methods_F_model_sampling_with_Xpred_backup.Rmd
 data/*.rda
 data/*.gpkg
 data/*.xlsx
+data/fig1_data/*
 !data/all_models.xlsx
 !data/loo_sum.xlsx
 data/*.csv
@@ -17,3 +19,4 @@ data/*.csv
 !data/coeffs_8vars.csv
 !data/comparisons.csv
 compiled_models/*
+images/*

@@ -2,12 +2,12 @@
 title: "Dispersed urban-stormwater control improved stream water quality in a catchment-scale experiment"
 subtitle: "Supplementary methods F: model sampling with predictions to new data"
 author:
-  - Christopher J Walsh, Sam J Imberger, Matthew J Burns, Darren G Bos, and Tim D Fletcher
+  - Christopher J Walsh, Moss Imberger, Matthew J Burns, Darren G Bos, and Tim D Fletcher
 date: "School of Ecosystem and Forest Sciences, The University of Melbourne, 500 Yarra Boulevard, Burnley, 3121 Victoria, Australia"
 output:   
   word_document:
     reference_docx: officedown_template.docx
-csl: ecol-app.csl
+csl: wrr.csl
 editor_options: 
   chunk_output_type: console
 ---

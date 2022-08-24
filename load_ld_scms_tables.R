@@ -8,15 +8,13 @@
 # Open RStudio on your local computer. Click File, New Project, Version Control, Git. Paste the repository URL 
 # and enter TAB to move to the Project directory name field. Click Create Project.
 
-# Walsh, C. J., Burns, M. J., Fletcher, T. D., Bos, D. G., Kunapo, J., Poelsma, P., & Imberger, M. (2022a), 
+# Walsh, C. J., Burns, M., Fletcher, T. D., Bos, D. G., Kunapo, J., Poelsma, P., & Imberger, M. (2022a), 
 # Linking stormwater control performance to stream ecosystem outcomes: incorporating a performance metric into 
 # effective imperviousness/Data and code, Open Science Framework. https://osf.io/57azq
 #
 # Walsh, C. J., Imberger, M., Burns, M. J., Fletcher, T. D., & Bos, D. G. (2022b). 
 # Dispersed Urban-Stormwater Control Improved Stream Water Quality in a 
 # Catchment-Scale Experiment. Water Resources Research.
-
-
 
 source("code/BACRIfunctions.R")
 source("code/download.OSF.file.R")
@@ -55,7 +53,7 @@ for (i in 1:length(rda_files)) {
 }
 
 # The following files (loaded above) are derived from the database tables using code in the Rmd files
-# ei_ts.rda - see derivation in ei_ts chunk of WalshEtAl_wrr2021_S1-2.Rmd
+# ei_ts.rda - see derivation in ei_ts chunk of WalshEtAl_wrr2021_S1-2.Rmd (see also https://osf.io/57azq/wiki/Errata/).
 
 #Tidy up some of the data ready for analysis and plotting
 SCMs <- scms; rm(scms)
