@@ -8,7 +8,7 @@
 # Open RStudio on your local computer. Click File, New Project, Version Control, Git. Paste the repository URL 
 # and enter TAB to move to the Project directory name field. Click Create Project.
 
-# Walsh, C. J., Burns, M., Fletcher, T. D., Bos, D. G., Kunapo, J., Poelsma, P., & Imberger, M. (2022a), 
+# Walsh, C. J., Burns, M. J., Fletcher, T. D., Bos, D. G., Kunapo, J., Poelsma, P., & Imberger, M. (2022a), 
 # Linking stormwater control performance to stream ecosystem outcomes: incorporating a performance metric into 
 # effective imperviousness/Data and code, Open Science Framework. https://osf.io/57azq
 #
@@ -17,43 +17,9 @@
 # Catchment-Scale Experiment. Water Resources Research.
 
 source("code/BACRIfunctions.R")
-source("code/download.OSF.file.R")
 # Check if all relevant spatial files have been downloaded: if not download them
-gpkg_files <- dir(here::here("data/fig1_data"))[grep("gpkg",dir(here::here("data/fig1_data")))]
-all_gpkgs <- c("Australia_GDA94_GCS.gpkg","catIA.gpkg","cats.gpkg","ia.gpkg",
-               "lsc_dbs_streams.gpkg","parcels.gpkg","scms.gpkg","siteLabels.gpkg",
-               "sites.gpkg","streams.gpkg","subcs.gpkg","Victoria_GDA94_GCS.gpkg")
-guids <- c("4pz5d","8rd3x","ahstz","hgeuv","yazpb","f9b2e",
-           "mgh6t","gku5p","dscqz","jm563","rneqf","ps8wy")
-guids <- guids[!all_gpkgs %in% gpkg_files]
-gpkg_files <- all_gpkgs[!all_gpkgs %in% gpkg_files]
-if (length(gpkg_files) > 0) {
-  for (i in 1:length(gpkg_files))
-    download.OSF.file(GUID = guids[i],
-                      Access_Token = "https://osf.io/3um4v/?view_only=7392be708374475b98e5ebbf2f86855f",
-                      file_name = gpkg_files[i], subdir = "data/fig1_data")
-}
-
-# load non-spatial files
-# 1 large file on OSF
-for (i in 1:length(all_gpkgs)) {
-  temp <- sf::st_read(here::here("data/fig1_data",paste(all_gpkgs[i],sep = "")), 
-                      stringsAsFactors = FALSE, quiet = TRUE)
-  temp <- sf::st_set_geometry(sf::st_set_geometry(temp,NULL), sf::st_geometry(temp)) # set geometry, return sf
-  assign(gsub(".gpkg","",all_gpkgs[i]),temp)
-}
-# small files kept on github
-rda_files <-  dir(here::here("data/fig1_data"))[grep(".rda",dir(here::here("data/fig1_data")))]
-for (i in 1:length(rda_files)) {
-  if (rda_files[i] == "Croydon_1966_hourly_rain_runoff_et.rda") {
-    Croydon <- prepare_runoff_data(get(load(here::here("data/fig1_data",rda_files[i]))))  
-  }else{
-    load(here::here("data/fig1_data",rda_files[i]))
-  }
-}
-
 # The following files (loaded above) are derived from the database tables using code in the Rmd files
-# ei_ts.rda - see derivation in ei_ts chunk of WalshEtAl_wrr2021_S1-2.Rmd (see also https://osf.io/57azq/wiki/Errata/).
+# ei_ts.rda - see derivation in ei_ts chunk of WalshEtAl_wrr2021_S1-2.Rmd
 
 #Tidy up some of the data ready for analysis and plotting
 SCMs <- scms; rm(scms)
@@ -225,9 +191,9 @@ brs_IA_map <- catIA[catIA$subc == "BRS0015",]
 brs_IA_map$area_m2_corrected <- brs_IA_map$area_m2/brsJKunderFactor
 # assume those parts of the catchment serviced by stormwater drainage are 90% connected
 brs_TI_2009 <- sum(brs_IA_map$area_m2_corrected) /
-                     cats$carea_m2[cats$sitecode == "BRS0015"]
+  cats$carea_m2[cats$sitecode == "BRS0015"]
 brs_EI_2009 <- sum(brs_IA_map$area_m2_corrected*brs_IA_map$conn*0.9) /
-                       cats$carea_m2[cats$sitecode == "BRS0015"]
+  cats$carea_m2[cats$sitecode == "BRS0015"]
 brsts <- data.frame(date = ei_101$iats$date)
 brsts$ti <-  brs_TI_2009*exp(brsTIGrowthRate*(lubridate::decimal_date(brsts$date) -  
                                                 lubridate::decimal_date(lubridate::dmy("17-07-2009"))))
@@ -259,4 +225,5 @@ rm(brs_IA_map, brsts, ferIA, ferts, lyrIA, lyrts, olnIA, olnts, sasIA, sasts,
    eii,ferCorrFactor,ferEI2009,ferTI2009,jkDbUnderFactor, 
    jkPropUnderFactor,lyrEI2009,lyrTI2009,ndays,olnEI2009,olnTI2009, rda_files,
    sasGrowthProp,sasTIGrowthRate,tii)
+
 

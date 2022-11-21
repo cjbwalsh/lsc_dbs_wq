@@ -68,8 +68,10 @@ wq_data$lTem <- log10(wq_data$Tem)
 # range(tot_rain$x/n_years) # 
 ann_rain <- "870-1090"
 
-new_X <- read.csv("data/prediction_set.csv")
-new_X_N <- read.csv("data/prediction_set_N.csv")
+new_X <- data.frame(read_excel("~/Documents/git/lsc_dbs_wq/data/prediction_set.xlsx",
+                                      sheet = "new_X_tp"), stringsAsFactors = FALSE)
+new_X_N <- data.frame(read_excel("~/Documents/git/lsc_dbs_wq/data/prediction_set.xlsx",
+                                      sheet = "new_X_tn"), stringsAsFactors = FALSE)
 
 #data frame matching ultimate EI (degrd) and maximum restr achieved at the 6 experimental sites
 exp_sites <- data.frame(site = c("D8","D4","Ln","L4","Ls","L1"),
